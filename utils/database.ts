@@ -38,10 +38,15 @@ export async function connectToDatabase() {
     logger.info("Creating new database connection...");
     const opts = {
       bufferCommands: false,
-      maxPoolSize: 10,
-      serverSelectionTimeoutMS: 5000,
+      maxPoolSize: 50, // Increased from 10
+      minPoolSize: 5, // Keep minimum connections alive
+      serverSelectionTimeoutMS: 10000, // Increased from 5000
       socketTimeoutMS: 45000,
+      connectTimeoutMS: 10000,
       family: 4,
+      retryWrites: true,
+      retryReads: true,
+      maxIdleTimeMS: 60000, // Close idle connections after 60s
     };
 
     cached.promise = mongoose
