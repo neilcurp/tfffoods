@@ -79,6 +79,7 @@ const ProductDrawer = ({
                     href={`/products/brand/${brand
                       .toLowerCase()
                       .replace(" ", "")}`}
+                    prefetch={false}
                     onClick={handleLinkClick}
                     className="text-muted-foreground hover:text-foreground transition-colors"
                   >
@@ -89,7 +90,8 @@ const ProductDrawer = ({
                   <Link
                     href={`/products/brand/${brand
                       .toLowerCase()
-                      .replace(" ", "")}/new`}
+                      .replace(" ", "")}?sort=new`}
+                    prefetch={false}
                     onClick={handleLinkClick}
                     className="text-muted-foreground hover:text-foreground transition-colors"
                   >
@@ -100,7 +102,8 @@ const ProductDrawer = ({
                   <Link
                     href={`/products/brand/${brand
                       .toLowerCase()
-                      .replace(" ", "")}/popular`}
+                      .replace(" ", "")}?sort=popular`}
+                    prefetch={false}
                     onClick={handleLinkClick}
                     className="text-muted-foreground hover:text-foreground transition-colors"
                   >
