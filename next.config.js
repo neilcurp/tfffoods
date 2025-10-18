@@ -4,6 +4,17 @@ const nextConfig = {
     dirs: ["app", "components", "lib", "utils"],
     ignoreDuringBuilds: false,
   },
+  async headers() {
+    return [
+      {
+        // Ensure Next.js build chunks are never cached by intermediaries
+        source: "/_next/static/:path*",
+        headers: [
+          { key: "Cache-Control", value: "no-store, must-revalidate" },
+        ],
+      },
+    ];
+  },
   images: {
     remotePatterns: [
       {
