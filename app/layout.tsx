@@ -102,12 +102,6 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head />
       <body className={`${inter.className} app-background min-h-screen`}>
-        <script
-          dangerouslySetInnerHTML={{
-            __html:
-              "(function(){try{var k='__chunk_reload_once__';function once(){if(!sessionStorage.getItem(k)){sessionStorage.setItem(k,'1');location.reload();}}window.addEventListener('error',function(e){var msg=(e&&e.message)||'';if(/Loading chunk|ChunkLoadError|ERR_HTTP2_PROTOCOL_ERROR/.test(msg)){once();}},true);window.addEventListener('unhandledrejection',function(e){var r=e&&e.reason;var msg=(r&&(r.message||r.toString()))||'';if(/Loading chunk|ChunkLoadError/.test(msg)){once();}});}catch(_){}})();",
-          }}
-        />
         <GoogleMapsScript />
         <ThemeProvider
           attribute="class"
