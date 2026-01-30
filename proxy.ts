@@ -2,6 +2,8 @@ import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 import { logger } from "@/utils/logger";
 
+// Next.js "middleware" file convention is deprecated in favor of "proxy".
+
 // Define public routes that don't require authentication
 const PUBLIC_ROUTES = [
   "/",
@@ -31,17 +33,13 @@ const PUBLIC_API_ROUTES = [
 ];
 
 export default withAuth(
-  async function middleware(request) {
+  async function proxy(request) {
     try {
       const path = request.nextUrl.pathname;
       const isAdminRoute = path.startsWith("/admin");
       const isApiRoute = path.startsWith("/api");
-      const isPublicRoute = PUBLIC_ROUTES.some((route) =>
-        path.startsWith(route)
-      );
-      const isPublicApiRoute = PUBLIC_API_ROUTES.some((route) =>
-        path.startsWith(route)
-      );
+      const isPublicRoute = PUBLIC_ROUTES.some((route) => path.startsWith(route));
+      const isPublicApiRoute = PUBLIC_API_ROUTES.some((route) => path.startsWith(route));
       const isAuthRoute = path.startsWith("/api/auth");
 
       // Log the request details
@@ -67,28 +65,18 @@ export default withAuth(
       }
 
       // Skip authentication for public routes
-      if (isPublicRoute) {
-        return NextResponse.next();
-      }
+      if (isPublicRoute) return NextResponse.next();
 
       // Skip authentication for public API routes
-      if (isPublicApiRoute) {
-        return NextResponse.next();
-      }
+      if (isPublicApiRoute) return NextResponse.next();
 
       // Handle API routes
       if (isApiRoute) {
         // Add CORS headers for API routes
         const response = NextResponse.next();
         response.headers.set("Access-Control-Allow-Origin", "*");
-        response.headers.set(
-          "Access-Control-Allow-Methods",
-          "GET, POST, PUT, DELETE, OPTIONS"
-        );
-        response.headers.set(
-          "Access-Control-Allow-Headers",
-          "Content-Type, Authorization"
-        );
+        response.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+        response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
         return response;
       }
 
@@ -100,7 +88,7 @@ export default withAuth(
 
       return NextResponse.next();
     } catch (error) {
-      logger.error("Error in middleware", error);
+      logger.error("Error in proxy", error);
       return NextResponse.next();
     }
   },
@@ -110,14 +98,10 @@ export default withAuth(
         const path = req.nextUrl.pathname;
 
         // Allow public routes without authentication
-        if (PUBLIC_ROUTES.some((route) => path.startsWith(route))) {
-          return true;
-        }
+        if (PUBLIC_ROUTES.some((route) => path.startsWith(route))) return true;
 
         // Allow public API routes without authentication
-        if (PUBLIC_API_ROUTES.some((route) => path.startsWith(route))) {
-          return true;
-        }
+        if (PUBLIC_API_ROUTES.some((route) => path.startsWith(route))) return true;
 
         // Only allow login and logout without auth
         if (path.startsWith("/api/auth/login") || path.startsWith("/api/auth/logout")) {
@@ -136,3 +120,4 @@ export const config = {
     "/((?!api/auth|_next/static|_next/image|favicon.ico|locales/).*)", // Exclude auth routes and static files
   ],
 };
+

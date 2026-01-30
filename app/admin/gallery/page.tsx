@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { CldUploadButton } from "next-cloudinary";
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { useTranslation } from "@/providers/language/LanguageContext";
 import toast from "react-hot-toast";
 import Image from "next/image";
