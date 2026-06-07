@@ -1,14 +1,18 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
+import { connectToDatabase } from "@/utils/database";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    // Check if MongoDB is connected
-    const dbStatus = mongoose.connection.readyState;
-    
+    // Actively (re)establish the cached connection so the health check reflects
+    // real DB reachability instead of failing right after a fresh container start
+    // when no other route has triggered a connection yet.
+    await connectToDatabase();
+
     // readyState: 0 = disconnected, 1 = connected, 2 = connecting, 3 = disconnecting
+    const dbStatus = mongoose.connection.readyState;
     if (dbStatus !== 1) {
       return NextResponse.json(
         {
