@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import bcryptjs from "bcryptjs";
 import User from "@/utils/models/User";
+import { connectToDatabase, waitForConnection } from "@/utils/database";
 
 export async function POST(request: Request) {
   try {
@@ -11,6 +12,12 @@ export async function POST(request: Request) {
         { error: "Missing required fields" },
         { status: 400 }
       );
+    }
+
+    await connectToDatabase();
+    const isConnected = await waitForConnection(10000);
+    if (!isConnected) {
+      throw new Error("Database connection timeout");
     }
 
     // Check if user exists

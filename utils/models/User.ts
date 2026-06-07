@@ -4,7 +4,9 @@ import { Address } from "@/types";
 interface UserDocument extends mongoose.Document {
   name?: string;
   email: string;
+  password?: string;
   image?: string;
+  profileImage?: string;
   admin: boolean;
   role: "admin" | "accounting" | "logistics" | "user";
   phone?: string; // Change to string type
@@ -28,7 +30,9 @@ const userSchema = new mongoose.Schema<UserDocument>(
       required: true,
       unique: true,
     },
+    password: String,
     image: String,
+    profileImage: String,
     admin: {
       type: Boolean,
       default: false,

@@ -9,6 +9,10 @@ import Invoice from "@/utils/models/Invoice";
 import invoiceNumberService from "@/utils/services/invoiceNumberService";
 import { sendEmail } from "@/lib/emailService";
 import { generateOrderConfirmationEmail } from "@/lib/emailTemplates";
+import {
+  validateCheckoutInput,
+  computeOrderTotals,
+} from "@/utils/services/checkoutService";
 import type { Document } from "mongoose";
 
 interface SavedOrder extends Document {
@@ -43,13 +47,6 @@ export async function POST(req: Request) {
 
     // Get request data
     const data = await req.json();
-    console.log("Received checkout data:", {
-      ...data,
-      deliveryMethod: {
-        value: data.deliveryMethod,
-        type: typeof data.deliveryMethod,
-      },
-    });
 
     const {
       name,
@@ -64,68 +61,12 @@ export async function POST(req: Request) {
       paymentDate,
     } = data;
 
-    // Validate required fields
-    const missingFields = {
-      name: !name,
-      email: !email,
-      phone: !phone,
-      shippingAddress: !shippingAddress,
-      cartItems: !cartItems,
-      deliveryMethod: deliveryMethod === undefined,
-      paymentMethod: !paymentMethod,
-    };
-
-    if (Object.values(missingFields).some(Boolean)) {
-      console.error("Missing required fields:", missingFields);
-      return NextResponse.json(
-        {
-          error: "Missing required fields",
-          details: missingFields,
-        },
-        { status: 400 }
-      );
-    }
-
-    // Validate shipping address
-    if (!shippingAddress.en || !shippingAddress["zh-TW"]) {
-      console.error("Invalid shipping address:", {
-        address: shippingAddress,
-        missing: {
-          en: !shippingAddress.en,
-          "zh-TW": !shippingAddress["zh-TW"],
-        },
+    // Validate required fields, shipping address, and cart items
+    const validationError = validateCheckoutInput(data);
+    if (validationError) {
+      return NextResponse.json(validationError.body, {
+        status: validationError.status,
       });
-      return NextResponse.json(
-        {
-          error: "Invalid shipping address",
-          details: {
-            missing: {
-              en: !shippingAddress.en,
-              "zh-TW": !shippingAddress["zh-TW"],
-            },
-          },
-        },
-        { status: 400 }
-      );
-    }
-
-    // Validate cart items
-    if (!Array.isArray(cartItems) || cartItems.length === 0) {
-      console.error("Invalid cart items:", {
-        items: cartItems,
-        isArray: Array.isArray(cartItems),
-        length: cartItems?.length,
-      });
-      return NextResponse.json(
-        {
-          error: "Invalid cart items",
-          details: {
-            isArray: Array.isArray(cartItems),
-            length: cartItems?.length,
-          },
-        },
-        { status: 400 }
-      );
     }
 
     // Get delivery settings
@@ -137,74 +78,19 @@ export async function POST(req: Request) {
       );
     }
 
-    // Calculate subtotal
-    const subtotal = cartItems.reduce((sum: number, item: any) => {
-      return sum + (item.price || 0) * (item.quantity || 0);
-    }, 0);
-
-    // Get delivery cost
-    const deliveryMethodIndex = Number(deliveryMethod);
-    console.log("Delivery method conversion:", {
-      original: deliveryMethod,
-      converted: deliveryMethodIndex,
-      type: typeof deliveryMethodIndex,
-      isNaN: isNaN(deliveryMethodIndex),
-    });
-
-    if (
-      isNaN(deliveryMethodIndex) ||
-      deliveryMethodIndex < 0 ||
-      deliveryMethodIndex >= deliverySettings.deliveryMethods.length
-    ) {
-      console.error("Invalid delivery method:", {
-        deliveryMethod,
-        deliveryMethodIndex,
-        type: typeof deliveryMethod,
-        methodsLength: deliverySettings.deliveryMethods.length,
-        value: deliveryMethod,
-        deliverySettings,
-        validation: {
-          isNaN: isNaN(deliveryMethodIndex),
-          isNegative: deliveryMethodIndex < 0,
-          isOutOfBounds:
-            deliveryMethodIndex >= deliverySettings.deliveryMethods.length,
-        },
+    // Compute delivery method, subtotal, delivery cost, and total
+    const totalsResult = computeOrderTotals(
+      cartItems,
+      deliverySettings,
+      deliveryMethod
+    );
+    if ("error" in totalsResult) {
+      return NextResponse.json(totalsResult.error.body, {
+        status: totalsResult.error.status,
       });
-      return NextResponse.json(
-        {
-          error: "Invalid delivery method",
-          details: {
-            deliveryMethod,
-            deliveryMethodIndex,
-            type: typeof deliveryMethod,
-            methodsLength: deliverySettings.deliveryMethods.length,
-            validation: {
-              isNaN: isNaN(deliveryMethodIndex),
-              isNegative: deliveryMethodIndex < 0,
-              isOutOfBounds:
-                deliveryMethodIndex >= deliverySettings.deliveryMethods.length,
-            },
-          },
-        },
-        { status: 400 }
-      );
     }
-
-    const selectedMethod =
-      deliverySettings.deliveryMethods[deliveryMethodIndex];
-    console.log("Selected delivery method:", {
-      index: deliveryMethodIndex,
-      method: selectedMethod,
-    });
-
-    const deliveryCost = selectedMethod.cost;
-
-    // Apply free delivery if subtotal exceeds threshold
-    const finalDeliveryCost =
-      subtotal >= deliverySettings.freeDeliveryThreshold ? 0 : deliveryCost;
-
-    // Calculate total
-    const total = subtotal + finalDeliveryCost;
+    const { deliveryMethodIndex, subtotal, finalDeliveryCost, total } =
+      totalsResult.totals;
 
     // Generate order reference
     const orderReference = await invoiceNumberService.generateOrderReference();

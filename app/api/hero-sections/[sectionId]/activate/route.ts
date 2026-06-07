@@ -13,7 +13,7 @@ interface Params {
 export async function POST(request: Request, { params }: Params) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    if (!session?.user?.admin) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

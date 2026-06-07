@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { BlogPostEditor } from "./BlogPostEditor";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/auth.config";
 import { redirect } from "next/navigation";
 
 interface PageProps {

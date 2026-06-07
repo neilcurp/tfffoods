@@ -2,9 +2,16 @@ import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/utils/database";
 import Invoice from "@/utils/models/Invoice";
 import User from "@/utils/models/User";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../../auth/[...nextauth]/auth.config";
 
 export async function GET() {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.admin) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     console.log("Testing database connection...");
     await connectToDatabase();
     console.log("Database connected successfully");

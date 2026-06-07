@@ -11,6 +11,11 @@ import { removeOrderFromInvoices } from "@/utils/services/invoiceService";
 
 export async function GET(req: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.admin) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     await connectToDatabase();
 
     const { searchParams } = new URL(req.url);
@@ -90,6 +95,11 @@ export async function GET(req: Request) {
 
 export async function PUT(req: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.admin) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     await connectToDatabase();
 
     const {

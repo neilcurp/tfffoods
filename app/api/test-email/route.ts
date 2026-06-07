@@ -1,8 +1,15 @@
 import { NextResponse } from "next/server";
 import { sendEmail } from "@/lib/emailService";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../auth/[...nextauth]/auth.config";
 
 export async function GET(request: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.admin) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const url = new URL(request.url);
     const email = url.searchParams.get("email") || "test@example.com";
     const debug = url.searchParams.get("debug") === "1";
@@ -41,6 +48,11 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.admin) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     // Log environment variables (without exposing sensitive data)
     console.log("Environment check:", {
       hasBrevoKey: !!process.env.BREVO_API_KEY,

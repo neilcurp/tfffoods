@@ -1,7 +1,14 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../../auth/[...nextauth]/auth.config";
 
 export async function GET() {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.admin) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const data = {
       hasPublishableKey: Boolean(
         process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY

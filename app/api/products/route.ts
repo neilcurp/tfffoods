@@ -227,8 +227,11 @@ export async function POST(request: Request) {
   return handleProducts(async () => {
     try {
       const session = await getServerSession(authOptions);
-      if (!session?.user?.id) {
-        console.error("Unauthorized: No user ID in session", session);
+      if (!session?.user?.admin) {
+        console.error(
+          "Unauthorized: Admin access required",
+          session?.user?.email
+        );
         throw new Error("Unauthorized");
       }
 

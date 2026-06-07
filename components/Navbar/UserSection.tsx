@@ -18,8 +18,6 @@ const UserSection = ({ session }: UserSectionProps) => {
   const { t } = useTranslation();
   const clearCart = useCartStore((state) => state.clearCart);
 
-  console.log("DEBUG SESSION:", session);
-
   const handleSignOut = async () => {
     try {
       // 1. Clear client-side cart

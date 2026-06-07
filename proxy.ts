@@ -32,14 +32,36 @@ const PUBLIC_API_ROUTES = [
   "/api/hero-sections",
 ];
 
+// Define API routes that require an admin token
+const ADMIN_API_ROUTES = ["/api/admin", "/api/orderAdmin"];
+
+// Page routes that require a logged-in user (non-admin protected pages).
+// Everything not listed here stays public, so public browsing pages
+// (e.g. /categories, /brands, /products) are never accidentally blocked.
+const PROTECTED_PAGE_PREFIXES = [
+  "/profile",
+  "/orders",
+  "/invoices",
+  "/dashboard",
+  "/checkout",
+];
+
+const matchesPrefix = (path: string, routes: string[]) =>
+  routes.some((route) =>
+    route === "/" ? path === "/" : path.startsWith(route)
+  );
+
 export default withAuth(
   async function proxy(request) {
     try {
       const path = request.nextUrl.pathname;
       const isAdminRoute = path.startsWith("/admin");
       const isApiRoute = path.startsWith("/api");
-      const isPublicRoute = PUBLIC_ROUTES.some((route) => path.startsWith(route));
-      const isPublicApiRoute = PUBLIC_API_ROUTES.some((route) => path.startsWith(route));
+      const isAdminApiRoute = ADMIN_API_ROUTES.some((route) =>
+        path.startsWith(route)
+      );
+      const isPublicRoute = matchesPrefix(path, PUBLIC_ROUTES);
+      const isPublicApiRoute = matchesPrefix(path, PUBLIC_API_ROUTES);
       const isAuthRoute = path.startsWith("/api/auth");
 
       // Log the request details
@@ -51,6 +73,19 @@ export default withAuth(
         isPublicApiRoute,
         isAuthRoute,
       });
+
+      // Enforce admin access first so admin pages/APIs are protected
+      // regardless of the public-route handling below. Login enforcement for
+      // protected user pages is handled by the `authorized` callback.
+      const token = request.nextauth.token;
+      if (isAdminApiRoute && !token?.admin) {
+        logger.warn(`Non-admin user attempted to access admin API: ${path}`);
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      if (isAdminRoute && !token?.admin) {
+        logger.warn(`Non-admin user attempted to access admin route: ${path}`);
+        return NextResponse.redirect(new URL("/", request.url));
+      }
 
       // Handle auth routes with proper cache control
       if (isAuthRoute) {
@@ -80,12 +115,6 @@ export default withAuth(
         return response;
       }
 
-      // Handle admin routes
-      if (isAdminRoute && !request.nextauth.token?.admin) {
-        logger.warn(`Non-admin user attempted to access admin route: ${path}`);
-        return NextResponse.redirect(new URL("/", request.url));
-      }
-
       return NextResponse.next();
     } catch (error) {
       logger.error("Error in proxy", error);
@@ -93,23 +122,26 @@ export default withAuth(
     }
   },
   {
+    pages: {
+      signIn: "/login",
+    },
     callbacks: {
       authorized: ({ token, req }) => {
         const path = req.nextUrl.pathname;
 
-        // Allow public routes without authentication
-        if (PUBLIC_ROUTES.some((route) => path.startsWith(route))) return true;
+        // API routes always pass through to their own handlers, which perform
+        // auth and return JSON (admin APIs are enforced in the proxy function).
+        // This avoids turning JSON 401s into login-page redirects.
+        if (path.startsWith("/api")) return true;
 
-        // Allow public API routes without authentication
-        if (PUBLIC_API_ROUTES.some((route) => path.startsWith(route))) return true;
+        // Admin pages pass through; the proxy function redirects non-admins.
+        if (path.startsWith("/admin")) return true;
 
-        // Only allow login and logout without auth
-        if (path.startsWith("/api/auth/login") || path.startsWith("/api/auth/logout")) {
-          return true;
-        }
+        // Protected user pages require a logged-in session.
+        if (matchesPrefix(path, PROTECTED_PAGE_PREFIXES)) return !!token;
 
-        // Require token for all other protected routes
-        return !!token;
+        // All other pages are public.
+        return true;
       },
     },
   }

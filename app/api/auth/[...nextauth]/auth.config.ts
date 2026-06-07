@@ -116,7 +116,6 @@ export const authOptions: NextAuthOptions = {
           const userDoc = await User.findOne({
             email: credentials.email,
           });
-          console.log("Found user in database:", userDoc);
 
           if (!userDoc) {
             throw new Error("Invalid credentials");
@@ -202,27 +201,21 @@ export const authOptions: NextAuthOptions = {
       }
     },
     async jwt({ token, user }) {
-      console.log("JWT Callback - User Data:", user);
-      console.log("JWT Callback - Current Token:", token);
       if (user) {
         token.id = user.id;
         token.email = user.email;
         token.role = user.role;
         token.admin = user.admin;
       }
-      console.log("JWT Callback - Updated Token:", token);
       return token;
     },
     async session({ session, token }) {
-      console.log("Session Callback - Token:", token);
-      console.log("Session Callback - Current Session:", session);
       if (token) {
         session.user.id = token.id;
         session.user.email = token.email;
         session.user.role = token.role;
         session.user.admin = token.admin;
       }
-      console.log("Session Callback - Updated Session:", session);
       return session;
     },
   },
