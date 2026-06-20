@@ -1,5 +1,10 @@
 import * as Brevo from "@getbrevo/brevo";
 
+type EmailAttachment = {
+  name: string;
+  content: string; // base64-encoded file content
+};
+
 type SendEmailArgs = {
   to: string;
   subject: string;
@@ -7,6 +12,7 @@ type SendEmailArgs = {
   html: string;
   senderEmail?: string;
   senderName?: string;
+  attachments?: EmailAttachment[];
 };
 
 let brevoClient: Brevo.TransactionalEmailsApi | null = null;
@@ -36,6 +42,7 @@ export const sendEmail = async ({
   html,
   senderEmail,
   senderName,
+  attachments,
 }: SendEmailArgs): Promise<{
   success: boolean;
   error?: string;
@@ -68,6 +75,12 @@ export const sendEmail = async ({
     sendSmtpEmail.subject = subject;
     sendSmtpEmail.htmlContent = html;
     sendSmtpEmail.textContent = text;
+    if (attachments && attachments.length > 0) {
+      sendSmtpEmail.attachment = attachments.map((a) => ({
+        name: a.name,
+        content: a.content,
+      }));
+    }
 
     const response = await client.sendTransacEmail(sendSmtpEmail);
     const messageId =

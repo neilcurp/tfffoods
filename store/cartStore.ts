@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { CartItem, CartStore, AddToCartItem } from "@/types";
 import axios from "axios";
+import { cachedGet, invalidateCache } from "@/utils/services/clientCache";
 
 const useCartStore = create<CartStore>()(
   persist(
@@ -169,6 +170,8 @@ const useCartStore = create<CartStore>()(
         window.localStorage.removeItem("cart-storage");
         try {
           await axios.patch("/api/userData", { cart: [] });
+          // Server cart changed; drop cached userData so reloads are fresh.
+          invalidateCache("/api/userData");
         } catch (error) {
           console.error("Failed to clear server cart:", error);
         }
@@ -189,9 +192,11 @@ const useCartStore = create<CartStore>()(
         })),
       loadServerCart: async () => {
         try {
-          const response = await axios.get("/api/userData");
-          if (response.data?.cart) {
-            set((state) => ({ ...state, items: response.data.cart }));
+          // Shared with UserContext via cachedGet so the many callers
+          // (CartIcon mount + CartContext effect) collapse into one request.
+          const data = await cachedGet<{ cart?: CartItem[] }>("/api/userData");
+          if (data?.cart) {
+            set((state) => ({ ...state, items: data.cart as CartItem[] }));
           }
         } catch (error) {
           console.error("Failed to load server cart:", error);

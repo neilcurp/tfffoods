@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import axios from "axios";
+import { cachedGet } from "@/utils/services/clientCache";
 
 interface StoreSettings {
   storeName: {
@@ -418,13 +418,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchSettings = async () => {
+  const fetchSettings = async (force = false) => {
     try {
       setIsLoading(true);
       setError(null);
-      console.log("Fetching settings..."); // Debug log
-      const res = await axios.get("/api/store-settings");
-      console.log("Received settings:", res.data); // Debug log
+      const res = { data: await cachedGet("/api/store-settings", { force }) };
 
       // Ensure all required fields exist with correct types
       const mergedSettings = {
@@ -646,7 +644,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({
         settings: safeSettings,
         isLoading,
         error,
-        refreshSettings: fetchSettings,
+        refreshSettings: () => fetchSettings(true),
       }}
     >
       {children}

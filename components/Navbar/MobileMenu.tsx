@@ -28,7 +28,7 @@ import { signOut } from "next-auth/react";
 import { useCartUI } from "@/components/ui/CartUIContext";
 import Cart from "@/components/ui/Cart";
 import CategoryMenu from "@/components/ui/CategoryMenu";
-import axios from "axios";
+import { cachedGet } from "@/utils/services/clientCache";
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -117,8 +117,8 @@ const MobileMenu = ({
     try {
       setIsLoadingCategories(true);
       setError(null);
-      const response = await axios.get("/api/categories");
-      setCategories(response.data); // API now returns array directly
+      const data = await cachedGet<Category[]>("/api/categories");
+      setCategories(data); // API now returns array directly
     } catch (error) {
       console.error("Failed to fetch categories:", error);
       setError("Failed to load categories");

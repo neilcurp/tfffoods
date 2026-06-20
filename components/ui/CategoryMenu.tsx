@@ -2,7 +2,7 @@
 
 import React, { useRef, useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import axios from "axios";
+import { cachedGet } from "@/utils/services/clientCache";
 import { useTranslation } from "@/providers/language/LanguageContext";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import { usePathname } from "next/navigation";
@@ -82,8 +82,8 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
     const fetchCategories = async () => {
       try {
         setLoading(true);
-        const response = await axios.get("/api/categories");
-        const categories = response.data.map((category: Category) => ({
+        const data = await cachedGet<Category[]>("/api/categories");
+        const categories = data.map((category: Category) => ({
           _id: category._id,
           name: category.name,
           displayNames: category.displayNames,

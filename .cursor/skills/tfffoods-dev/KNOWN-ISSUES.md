@@ -4,6 +4,59 @@ Append a dated entry under "Fix log" whenever you resolve a root-cause issue. Ch
 
 ## Fix log
 
+### 2026-06-20 — Invoice/receipt/order PDF redesign (light card layout)
+- **Request:** Make all PDF documents match the on-site invoice page look (sectioned cards, muted labels + bold values, green PAID badge), light/print-friendly, across both PDF engines.
+- **Shared renderer:** `utils/services/pdfDocument.ts` now exposes `renderDocument(doc,{model,branding,logo,scale})` + `DocModel`/`DocKeyValue` types. It draws header → two cards (details + payment) → addresses card → order-summary card (modern striped items table + right-aligned totals) → footer. Card style: `#F9FAFB` fill, `#E1E3EA` border, accent (`#535C91`) uppercase titles, gray (`#787A84`) labels, dark values. `drawPaidBadge`/`drawDocumentHeader`/`drawDocumentFooter`/`resolveScale`/`pickLang`/`formatMoney`/`PdfLineItem` kept. **Removed now-dead helpers** `drawSectionHeading`/`drawItemsTable`/`drawTotals` and `getPdfMetrics`/`PdfMetrics` (no remaining callers — all routes go through the model builders).
+- **Model builders:** `receiptService.ts` `buildInvoicePdf(invoice,{language,scale,documentType})` and **new** `buildOrderPdf(order,{language,scale})` both construct a `DocModel` and call `renderDocument`. Receipt = invoice model with `label:"RECEIPT"` + PAID badge. `getReceiptAttachmentByOrder` unchanged (uses `buildInvoicePdf`).
+- **Order routes refactored:** `orders/[orderId]/{print,download}` now just auth/connect/populate then call `buildOrderPdf` (previously hand-built linear PDFs). Still honor `?lang` + `?scale`.
+- **Client engine:** `app/invoices/[invoiceNumber]/InvoicePDF.tsx` (`@react-pdf/renderer`) rebuilt to the same card layout (Invoice Details / Payment Information / Addresses / Order Summary cards, striped table, totals, PAID badge when `status==="paid"` → title becomes "RECEIPT"). Period grand-total + payment-proof image preserved.
+- **Scale still works** end-to-end via the admin font-size picker; the client path is layout-driven (no `?scale`).
+
+### 2026-06-20 — InvoicePDF crash: multilang object rendered as React child
+- **Symptom:** `Objects are not valid as a React child (found: object with keys {en, zh-TW})` in `app/invoices/[invoiceNumber]/InvoicePDF.tsx`.
+- **Root cause:** `app/invoices/[invoiceNumber]/page.tsx` built `pdfBranding.address` from `office?.address` (a `{en,"zh-TW"}` object) without resolving the language; `InvoicePDF` renders `{branding.address}` directly. (Server PDFs were unaffected — `loadStoreBranding` already `pickLang`s.)
+- **Fix:** added a `pickText()` resolver in the page that coerces string-or-`{en,"zh-TW"}` to a plain string; applied to `address` and `storeName`.
+
+### 2026-06-20 — Unified payment → receipt pipeline (online + offline)
+- **Request:** Consistent receipt handling for both Stripe (online) and bank-transfer (offline) payments.
+- **Single "paid" source of truth:** new `utils/services/paymentService.ts` — `markInvoicePaid(invoice, {method,reference,date})` (idempotent: no-op if already paid) + `markInvoicePaidByOrder(orderId, …)`. Stripe webhook (`checkout.session.completed`) and admin `PUT /api/orderAdmin` (`confirmPayment`) now both call it (methods `credit_card` / `bank_transfer`). Offline invoices become **paid at verification time** (admin confirm), not only at delivery.
+- **Invoice model fixes:** added `"cancelled"` to the status enum (pre-save hook could set it but enum rejected it → KNOWN-ISSUES #10 fixed). Pre-save hook no longer downgrades an already-`paid` invoice (delivered→paid kept as fallback).
+- **Receipt PDF:** `pdfDocument.ts` gained `drawPaidBadge()`. New `utils/services/receiptService.ts` `buildInvoicePdf(invoice,{language,scale,documentType})` is the single invoice/receipt renderer (receipt = invoice + PAID badge + "RECEIPT" title + payment status). `getReceiptAttachmentByOrder(orderId,language)` returns a base64 Brevo attachment (never throws).
+- **Invoice routes refactored** (`invoices/[invoiceNumber]/{print,download}`) to call `buildInvoicePdf` and accept `?doc=receipt` — server only emits a receipt when `invoice.status === "paid"`, else falls back to invoice (never misleading).
+- **Email:** `lib/emailService.ts` `sendEmail` now accepts `attachments[{name,content(base64)}]` (mapped to Brevo `attachment`). Both the webhook and admin confirm attach the paid receipt PDF to the existing `generatePaymentConfirmedEmail`.
+- **UI gating ("Download/Print receipt" only when paid):** admin invoices list (sends `&doc=receipt` for paid), customer invoice page (`/invoices/[invoiceNumber]` — server-route receipt button when paid), customer order page (`/orders/[orderId]` — receipt button when status ∈ processing/shipped/delivered; added `invoiceNumber` to the order GET `.select`).
+- **Period offline-payment route mismatch — FIXED:** the page `app/checkout/offline-payment/page.tsx` is for paying an **existing period invoice** by uploading proof, but it POSTed to `/api/checkout/offline-payment`, which ignored `periodInvoiceNumber` and tried to create a *new one-time* Order (required `cartItems/billingAddress/shippingAddress` it never received; wrote `cartProducts` while the schema uses `items`; omitted required `deliveryMethod`) — so it always 400'd. Fix: the page now `PATCH /api/invoices/{periodInvoiceNumber}` `{paymentProofUrl, paymentReference, paymentDate}` (the same pattern the invoice detail page already uses). Extended that PATCH to also persist `paymentReference`. Deleted the dead/broken `app/api/checkout/offline-payment/route.ts` (no remaining callers).
+
+### 2026-06-20 — Adjustable PDF font size (order/invoice documents)
+- **Request:** Be able to change the invoice/order PDF font size, ideally from the invoices page.
+- **Implementation:** `utils/services/pdfDocument.ts` gained `resolveScale(value)` (parses `?scale=`, clamps 0.8–1.4, default 1) and `getPdfMetrics(scale)` (`bodyFont`/`smallFont`/`lineGap`). All five draw helpers (`drawDocumentHeader`/`drawSectionHeading`/`drawItemsTable`/`drawTotals`/`drawDocumentFooter`) take an optional `scale = 1` and multiply both font sizes **and** vertical spacing so larger text never overlaps. The 4 jsPDF routes (`orders|invoices [id] print|download`) read `?scale=` and use `metrics` for inline body text + pass `scale` to helpers.
+- **UI:** `app/admin/invoices/page.tsx` has a "Font size" `Select` (Small 0.85 / Normal 1 / Large 1.15 / Extra large 1.3), persisted in `localStorage["invoicePdfScale"]`; print/download now send `?lang=<language>&scale=<fontScale>`.
+- **Safe by default:** `scale` is optional everywhere (defaults to 1) so existing callers (order page, admin invoice detail, customer invoice page) are byte-for-byte unchanged unless they pass `scale`. Column x-positions in the items table stay fixed (only font + row height scale) — fine within the clamped range.
+- **Not covered:** the customer invoice download uses client-side `@react-pdf/renderer` (`InvoicePDF.tsx`), a separate path that does not read `?scale=`; wire it there too if per-user sizing is wanted on that page.
+
+### 2026-06-20 — userData fetch deduped via shared cache (cart + UserContext)
+- **Symptom:** `/api/userData` still hit ~6× per load after the earlier UserContext fix.
+- **Root cause:** `cartStore.loadServerCart()` GETs `/api/userData` and is triggered by both `CartIcon` (mount) and `CartContext`'s effect (deps include unstable `session`/`userData` objects → refires).
+- **Fix:** `loadServerCart` and `UserContext.fetchUserData` now use `cachedGet("/api/userData")` so simultaneous reads share one request; `refreshUserData` passes `force:true`. Cache invalidated after every cart-mutating PATCH (`cartStore.clearCart`, `CartContext` sync) so reads are never stale.
+
+### 2026-06-20 — Duplicate client data fetches deduped + userData PII logs removed
+- **Symptom:** Dev logs showed `/api/userData` fetched ~8× per load, plus `/api/store-settings` and `/api/categories` fetched 2–3× each.
+- **Root causes:** (1) `UserContext` effect depended on the whole `session` object (new reference every render) → refetched on every render. (2) `StoreProvider` and `StoreSettingsProvider` are both mounted globally and both GET `/api/store-settings`. (3) `CategoryMenu`/`MobileMenu` each GET `/api/categories` with plain axios (no sharing; `CategoriesMenu` already uses SWR).
+- **Fix:** `UserContext` now depends on `session?.user?.email` (stable) + `isFetching` guard (one fetch per sign-in). New `utils/services/clientCache.ts` `cachedGet(url,{ttl,force})` (in-flight dedup + 10s result cache; `invalidateCache` helper). Routed the two store-settings providers and the two category menus through it; `refreshSettings` passes `force:true` so admin saves still get fresh data. Removed verbose PII `console.log`s from `app/api/userData/route.ts` and debug logs from `StoreContext`.
+- **Note:** `CategoriesMenu` keeps SWR (keyed `?language=`); the plain menus use `/api/categories`. Different keys, but each is now deduped within its group.
+
+### 2026-06-20 — PDF Chinese (zh-TW) font rendering fixed
+- **Symptom:** Order/invoice PDFs showed mojibake for Traditional Chinese (addresses, product names) — e.g. `e°uL\o•€e°` instead of 屯門.
+- **Root cause:** jsPDF default fonts (Helvetica) only support ASCII; `@react-pdf/renderer` invoice download used Roboto (Latin-only).
+- **Fix:** Added `public/fonts/NotoSansTC-Regular.ttf` (Noto Sans TC, Traditional Chinese + Latin). Server PDFs: `utils/services/pdfFonts.ts` embeds font via `addFileToVFS`/`addFont`; all 4 jsPDF routes use `createPdfDocument()`. Client invoice PDF (`InvoicePDF.tsx`) registers `NotoSansTC` from `/fonts/NotoSansTC-Regular.ttf`. CDN fallback if local file missing.
+
+### 2026-06-20 — Branded PDF documents (logo + store contact from StoreSettings)
+- **Request:** Order/invoice PDFs were plain text with no branding; should show logo, store name, contact address/phone from `/admin/settings` (StoreSettings).
+- **New shared helper `utils/services/pdfDocument.ts`:** `loadStoreBranding(language)` (reads `StoreSettings.findOne`: `logo`, `storeName`, `contactInfo.email/phone`, first `contactPage.contactInfo.officeLocations[0].address/phone`), `fetchLogoImage(url)` (fetch → base64 data URL, detects PNG/JPEG/WEBP, fails gracefully), and jsPDF draw helpers `drawDocumentHeader` (logo + company block + divider + title), `drawSectionHeading`, `drawItemsTable` (ruled table), `drawTotals`, `drawDocumentFooter`. Also `resolveLanguage`/`pickLang`/`formatMoney`.
+- **Refactored 4 jsPDF routes** to use the helper (server-side, Node runtime): `app/api/orders/[orderId]/{print,download}` and `app/api/invoices/[invoiceNumber]/{print,download}`. They accept `?lang=en|zh-TW`. Auth/data/totals unchanged.
+- **Branded the client React-PDF invoice** (`app/invoices/[invoiceNumber]/InvoicePDF.tsx`): added optional `branding` prop (logo `Image` + company info header, divider, dynamic footer). Page passes branding from `useStoreSettings()`; order page buttons now pass site `language` via `?lang`.
+- **Note:** logo is fetched per request (Cloudinary URL); broken/missing logo falls back to store-name text. Admin invoice pages still call the API routes (default English) — branding applies there too.
+
 ### 2026-06-20 — Order/invoice print & download fixed (session `_id` + Next 16 params)
 - **Symptom:** Print/Download on `/orders/[orderId]` opened a new tab with `{"error":"Unauthorized"}` or failed silently; invoice PDF routes had the same traps.
 - **Root cause 1:** `auth.config.ts` session callback set `session.user.id` but never `session.user._id`. Print/download (and 7 other routes) authorized with `session.user._id`, which was always `undefined` for non-admins → 401.

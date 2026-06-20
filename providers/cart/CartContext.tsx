@@ -15,6 +15,7 @@ import { useSession } from "next-auth/react";
 import AuthDialog from "@/components/ui/AuthDialog";
 import axios from "axios";
 import { useUser } from "@/providers/user/UserContext";
+import { invalidateCache } from "@/utils/services/clientCache";
 
 type CartContextType = {
   items: CartItem[];
@@ -120,6 +121,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
               },
             }
           );
+          // Server cart changed; drop cached userData so reloads are fresh.
+          invalidateCache("/api/userData");
         }
       } catch (error) {
         console.error("Cart sync failed:", error);

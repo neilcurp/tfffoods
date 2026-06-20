@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import axios from "axios";
+import { cachedGet } from "@/utils/services/clientCache";
 
 interface StoreSettings {
   storeName: {
@@ -188,16 +188,14 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchSettings = async () => {
+  const fetchSettings = async (force = false) => {
     try {
       setLoading(true);
       setError(null);
-      const res = await axios.get("/api/store-settings");
-      setSettings(res.data);
+      const data = await cachedGet("/api/store-settings", { force });
+      setSettings(data as StoreSettings);
       // Notify other components about the settings update
-      window.dispatchEvent(
-        new CustomEvent("settingsUpdate", { detail: res.data })
-      );
+      window.dispatchEvent(new CustomEvent("settingsUpdate", { detail: data }));
     } catch (err) {
       console.error("Failed to fetch store settings:", err);
       setError("Failed to load store settings");
@@ -236,7 +234,7 @@ export const StoreSettingsProvider: React.FC<{ children: React.ReactNode }> = ({
         settings,
         loading,
         error,
-        refreshSettings: fetchSettings,
+        refreshSettings: () => fetchSettings(true),
       }}
     >
       {children}

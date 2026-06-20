@@ -29,14 +29,10 @@ export async function GET() {
       }), { status: 401 });
     }
 
-    console.log("userData - Fetching user data for email:", session.user.email);
-
     // Try to find the user first
     let user = await User.findOne({ email: session.user.email }).select(
       "-password"
     );
-
-    console.log("userData - Found user:", user?.toObject());
 
     // If user doesn't exist, create a new one with session data
     if (!user) {
@@ -47,7 +43,6 @@ export async function GET() {
           name: userName,
           profileImage: session.user.image || "/profile.jpg",
         });
-        console.log("userData - Created new user:", user.toObject());
       } catch (error) {
         console.error("Error creating new user:", error);
         throw new Error("Failed to create user");
@@ -62,7 +57,6 @@ export async function GET() {
         "zh-TW": "",
       };
     }
-    console.log("userData - Returning user object:", userObj);
     return {
       authenticated: true,
       user: userObj,

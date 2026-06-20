@@ -79,8 +79,9 @@ const invoiceSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: {
-        values: ["pending", "paid", "overdue"],
-        message: "Status must be either 'pending', 'paid', or 'overdue'",
+        values: ["pending", "paid", "overdue", "cancelled"],
+        message:
+          "Status must be 'pending', 'paid', 'overdue', or 'cancelled'",
       },
       default: "pending",
     },
@@ -278,13 +279,15 @@ invoiceSchema.pre("save", async function (next) {
           (order) => order.status === "cancelled"
         );
 
-        if (allDelivered) {
+        // Never downgrade an invoice that was already marked paid (payment is
+        // confirmed at verification time now, not only at delivery).
+        if (allCancelled) {
+          this.status = "cancelled";
+        } else if (allDelivered && this.status !== "paid") {
           this.status = "paid";
           if (!this.paymentDate) {
             this.paymentDate = new Date();
           }
-        } else if (allCancelled) {
-          this.status = "cancelled";
         }
       }
     }

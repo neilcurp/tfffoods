@@ -8,6 +8,8 @@ import Invoice from "@/utils/models/Invoice";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/auth.config";
 import { removeOrderFromInvoices } from "@/utils/services/invoiceService";
+import { markInvoicePaid } from "@/utils/services/paymentService";
+import { getReceiptAttachmentByOrder } from "@/utils/services/receiptService";
 
 export async function GET(req: Request) {
   try {
@@ -149,26 +151,34 @@ export async function PUT(req: Request) {
         }
       }
 
-      // Find and update associated invoice
+      // Find and update associated invoice (idempotent, shared with webhook)
       const invoice = await Invoice.findOne({ orders: orderId });
-      if (invoice) {
-        // For one-time orders, mark invoice as paid when payment is confirmed
-        if (invoice.invoiceType === "one-time") {
-          invoice.status = "paid";
-          await invoice.save();
-          console.log(
-            `Updated invoice ${invoice.invoiceNumber} status to paid`
-          );
-        }
+      if (invoice && invoice.invoiceType === "one-time") {
+        await markInvoicePaid(invoice, {
+          method: "bank_transfer",
+          reference: order.paymentReference,
+        });
+        console.log(`Marked invoice ${invoice.invoiceNumber} paid`);
       }
 
-      // Send confirmation email using branded template
+      // Send confirmation email with the paid receipt attached
       try {
+        const language = (order as any)?.user?.language || "en";
         const { subject, text, html } = generatePaymentConfirmedEmail(
           order,
-          (order as any)?.user?.language || "en"
+          language
         );
-        await sendEmail({ to: order.email, subject, text, html });
+        const receipt = await getReceiptAttachmentByOrder(
+          orderId,
+          language
+        );
+        await sendEmail({
+          to: order.email,
+          subject,
+          text,
+          html,
+          attachments: receipt ? [receipt] : undefined,
+        });
         console.log("Payment confirmed email sent successfully");
       } catch (emailError) {
         console.error("Error sending payment confirmed email:", emailError);

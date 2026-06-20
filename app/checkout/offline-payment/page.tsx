@@ -90,16 +90,18 @@ export default function OfflinePayment() {
     setIsSubmitting(true);
 
     try {
-      const response = await axios.post("/api/checkout/offline-payment", {
-        periodInvoiceNumber,
-        paymentProofUrl,
-        paymentReference,
-        paymentDate,
-        name: session?.user?.name,
-        email: session?.user?.email,
-      });
+      // Attach the payment proof to the existing period invoice (same pattern
+      // as the invoice detail page) instead of creating a new order.
+      const response = await axios.patch(
+        `/api/invoices/${periodInvoiceNumber}`,
+        {
+          paymentProofUrl,
+          paymentReference,
+          paymentDate,
+        }
+      );
 
-      if (response.data.success) {
+      if (response.data) {
         toast.success(t("checkout.offlinePaymentSubmitted"));
         router.push("/invoices");
       }

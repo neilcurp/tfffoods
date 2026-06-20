@@ -23,7 +23,7 @@ export async function GET(
         select: "_id name displayNames images price",
       })
       .select(
-        "_id user name email phone shippingAddress items deliveryMethod paymentMethod status paymentProof paymentReference paymentDate subtotal deliveryCost total createdAt updatedAt orderType periodInvoiceNumber periodStart periodEnd orderReference"
+        "_id user name email phone shippingAddress items deliveryMethod paymentMethod status paymentProof paymentReference paymentDate subtotal deliveryCost total createdAt updatedAt orderType invoiceNumber periodInvoiceNumber periodStart periodEnd orderReference"
       )
       .lean()
       .exec();

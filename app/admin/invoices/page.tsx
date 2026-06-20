@@ -91,12 +91,13 @@ const InvoiceListItem = ({
   isExpanded: boolean;
   onToggleExpand: (id: string) => void;
   onStatusChange: (id: string, status: string) => void;
-  onPrint: (id: string) => void;
-  onDownload: (id: string) => void;
+  onPrint: (id: string, asReceipt: boolean) => void;
+  onDownload: (id: string, asReceipt: boolean) => void;
   getStatusColor: (status: string) => string;
 }) => {
   const { t, language } = useTranslation();
   const router = useRouter();
+  const isPaid = invoice.status === "paid";
 
   const handleViewDetails = () => {
     router.push(`/admin/invoices/${invoice.invoiceNumber}`);
@@ -143,19 +144,41 @@ const InvoiceListItem = ({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => onPrint(invoice.invoiceNumber)}
-                title={t("admin-invoice.actions.print")}
+                onClick={() => onPrint(invoice.invoiceNumber, isPaid)}
+                title={
+                  isPaid
+                    ? language === "zh-TW"
+                      ? "列印收據"
+                      : "Print receipt"
+                    : t("admin-invoice.actions.print")
+                }
               >
                 <Printer className="h-4 w-4" />
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => onDownload(invoice.invoiceNumber)}
-                title={t("admin-invoice.actions.download")}
+                onClick={() => onDownload(invoice.invoiceNumber, isPaid)}
+                title={
+                  isPaid
+                    ? language === "zh-TW"
+                      ? "下載收據"
+                      : "Download receipt"
+                    : t("admin-invoice.actions.download")
+                }
               >
                 <Download className="h-4 w-4" />
               </Button>
+              {isPaid && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onDownload(invoice.invoiceNumber, false)}
+                  title={language === "zh-TW" ? "下載原始發票" : "Download invoice"}
+                >
+                  <FileText className="h-4 w-4" />
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -220,6 +243,25 @@ export default function AdminInvoicesPage() {
   const [expandedInvoices, setExpandedInvoices] = useState(new Set());
   const [error, setError] = useState<string | null>(null);
   const [isCleaningUp, setIsCleaningUp] = useState(false);
+  // PDF font scale for print/download (1 = current default). Remembered locally.
+  const [fontScale, setFontScale] = useState("1");
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem("invoicePdfScale");
+    if (saved) setFontScale(saved);
+  }, []);
+
+  const handleFontScaleChange = (value: string) => {
+    setFontScale(value);
+    window.localStorage.setItem("invoicePdfScale", value);
+  };
+
+  const fontSizeOptions = [
+    { value: "0.75", label: language === "zh-TW" ? "極小" : "Extra small" },
+    { value: "0.85", label: language === "zh-TW" ? "小" : "Small" },
+    { value: "1", label: language === "zh-TW" ? "標準" : "Normal" },
+    { value: "1.15", label: language === "zh-TW" ? "大" : "Large" },
+  ];
 
   // Force reload translations when component mounts
   useEffect(() => {
@@ -333,9 +375,12 @@ export default function AdminInvoicesPage() {
     setExpandedInvoices(newExpanded);
   };
 
-  const handlePrint = async (invoiceNumber: string) => {
+  const handlePrint = async (invoiceNumber: string, asReceipt = false) => {
     try {
-      const response = await fetch(`/api/invoices/${invoiceNumber}/print`);
+      const docParam = asReceipt ? "&doc=receipt" : "";
+      const response = await fetch(
+        `/api/invoices/${invoiceNumber}/print?lang=${language}&scale=${fontScale}${docParam}`
+      );
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || "Failed to print invoice");
@@ -355,9 +400,12 @@ export default function AdminInvoicesPage() {
     }
   };
 
-  const handleDownload = async (invoiceNumber: string) => {
+  const handleDownload = async (invoiceNumber: string, asReceipt = false) => {
     try {
-      const response = await fetch(`/api/invoices/${invoiceNumber}/download`);
+      const docParam = asReceipt ? "&doc=receipt" : "";
+      const response = await fetch(
+        `/api/invoices/${invoiceNumber}/download?lang=${language}&scale=${fontScale}${docParam}`
+      );
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || "Failed to download invoice");
@@ -371,7 +419,7 @@ export default function AdminInvoicesPage() {
       // Create a temporary link element
       const link = document.createElement("a");
       link.href = url;
-      link.download = `invoice-${invoiceNumber}.pdf`;
+      link.download = `${asReceipt ? "receipt" : "invoice"}-${invoiceNumber}.pdf`;
 
       // Append to document, click, and remove
       document.body.appendChild(link);
@@ -504,6 +552,21 @@ export default function AdminInvoicesPage() {
             <SelectItem value="overdue">
               {t("admin-invoice.filters.status.overdue")}
             </SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select value={fontScale} onValueChange={handleFontScaleChange}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue
+              placeholder={language === "zh-TW" ? "字體大小" : "Font size"}
+            />
+          </SelectTrigger>
+          <SelectContent>
+            {fontSizeOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {(language === "zh-TW" ? "字體：" : "Font: ") + option.label}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
 

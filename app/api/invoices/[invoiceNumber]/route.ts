@@ -236,7 +236,8 @@ export async function PATCH(
     await connectToDatabase();
 
     const { invoiceNumber } = await props.params;
-    const { paymentProofUrl, paymentDate } = await request.json();
+    const { paymentProofUrl, paymentDate, paymentReference } =
+      await request.json();
 
     const user = await User.findOne({ email: session.user.email });
     if (!user) {
@@ -255,6 +256,7 @@ export async function PATCH(
     // Update payment proof and date
     invoice.paymentProofUrl = paymentProofUrl;
     invoice.paymentDate = paymentDate ? new Date(paymentDate) : new Date();
+    if (paymentReference) invoice.paymentReference = paymentReference;
     await invoice.save();
 
     // Return updated invoice with populated fields

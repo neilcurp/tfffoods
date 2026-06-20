@@ -5,7 +5,8 @@ import Product from "@/utils/models/Product";
 import Stripe from "stripe";
 import { sendEmail } from "@/lib/emailService";
 import { generatePaymentConfirmedEmail } from "@/lib/emailTemplates";
-import Invoice from "@/utils/models/Invoice";
+import { markInvoicePaidByOrder } from "@/utils/services/paymentService";
+import { getReceiptAttachmentByOrder } from "@/utils/services/receiptService";
 
 export async function POST(req: Request) {
   try {
@@ -112,24 +113,28 @@ export async function POST(req: Request) {
 
         console.log("✨ Order updated (Stripe):", updatedOrder?._id);
 
-        // Mark invoice as paid if exists
+        // Mark invoice paid (idempotent, single source of truth)
         try {
-          const invoice = await Invoice.findOne({ orders: orderId });
-          if (invoice && invoice.status !== "paid") {
-            invoice.status = "paid";
-            await invoice.save();
-          }
+          await markInvoicePaidByOrder(orderId, { method: "credit_card" });
         } catch (e) {
           console.warn("Invoice update after Stripe payment failed", e);
         }
 
-        // Send payment confirmed email
+        // Send payment confirmed email with the paid receipt attached
         try {
+          const language = (updatedOrder as any)?.user?.language || "en";
           const { subject, text, html } = generatePaymentConfirmedEmail(
             updatedOrder as any,
-            (updatedOrder as any)?.user?.language || "en"
+            language
           );
-          await sendEmail({ to: order.email, subject, text, html });
+          const receipt = await getReceiptAttachmentByOrder(orderId, language);
+          await sendEmail({
+            to: order.email,
+            subject,
+            text,
+            html,
+            attachments: receipt ? [receipt] : undefined,
+          });
         } catch (e) {
           console.error("Failed to send payment confirmed email:", e);
         }

@@ -1,24 +1,22 @@
 "use client";
 
-import { PDFDownloadLink } from "@react-pdf/renderer";
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useTranslation } from "@/providers/language/LanguageContext";
 import { useRouter, useParams } from "next/navigation";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Printer } from "lucide-react";
+import { ArrowLeft, Download } from "lucide-react";
 import PrintableInvoice from "@/components/PrintableInvoice";
 import { toast } from "react-hot-toast";
 import { CloudinaryUploadWidgetResults } from "next-cloudinary";
 import { useCloudinary } from "@/hooks/useCloudinary";
 import { useUser } from "@/providers/user/UserContext";
-import InvoicePDF from "./InvoicePDF";
 import InvoiceInfoCard from "./components/InvoiceInfoCard";
 import OrderSummaryCard from "./components/OrderSummaryCard";
 import PaymentInfoCard from "./components/PaymentInfoCard";
 import AddressesCard from "./components/AddressesCard";
-import type { Invoice, PDFDownloadLinkProps } from "./invoiceTypes";
+import type { Invoice } from "./invoiceTypes";
 
 export default function InvoiceDetailPage() {
   const { t, language } = useTranslation();
@@ -82,33 +80,26 @@ export default function InvoiceDetailPage() {
     return address[language] || invoice?.user?.address?.[language] || "N/A";
   };
 
-  const handlePrint = () => {
-    const printWindow = window.open("", "_blank");
-    if (printWindow) {
-      printWindow.document.write(
-        "<html><head><title>Print Invoice</title></head><body>"
+  const handleDownloadDoc = async (asReceipt: boolean) => {
+    try {
+      const docParam = asReceipt ? "&doc=receipt" : "";
+      const res = await fetch(
+        `/api/invoices/${invoiceNumber}/download?lang=${language}${docParam}`
       );
-      printWindow.document.write(
-        document.querySelector("#printable-invoice")?.innerHTML || ""
-      );
-      printWindow.document.write("</body></html>");
-      printWindow.document.close();
-      printWindow.print();
+      if (!res.ok) throw new Error("Failed to download document");
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${asReceipt ? "receipt" : "invoice"}-${invoiceNumber}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error downloading document:", error);
+      toast.error(t("invoice.error.fetch"));
     }
-  };
-
-  const handleDownload = () => {
-    if (!invoice) return;
-    return (
-      <PDFDownloadLink
-        document={<InvoicePDF invoice={invoice} language={language} />}
-        fileName={`invoice-${invoice.invoiceNumber}.pdf`}
-      >
-        {({ blob, url, loading, error }) =>
-          loading ? "Loading document..." : "Download PDF"
-        }
-      </PDFDownloadLink>
-    );
   };
 
   const handlePaymentProofUpload = (result: CloudinaryUploadWidgetResults) => {
@@ -216,26 +207,18 @@ export default function InvoiceDetailPage() {
                 )}
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" onClick={handlePrint}>
-                  <Printer className="mr-2 h-4 w-4" />
-                  {t("order-details.navigation.print")}
+                <Button
+                  variant="outline"
+                  onClick={() => handleDownloadDoc(false)}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  {language === "zh-TW" ? "下載發票" : "Invoice"}
                 </Button>
-                {invoice && (
-                  <PDFDownloadLink
-                    document={
-                      <InvoicePDF invoice={invoice} language={language} />
-                    }
-                    fileName={`invoice-${invoice.invoiceNumber}.pdf`}
-                  >
-                    {({ blob, url, loading, error }: PDFDownloadLinkProps) => (
-                      <Button variant="outline" disabled={loading}>
-                        <Download className="mr-2 h-4 w-4" />
-                        {loading
-                          ? t("common.loading")
-                          : t("order-details.navigation.download")}
-                      </Button>
-                    )}
-                  </PDFDownloadLink>
+                {invoice?.status === "paid" && (
+                  <Button variant="default" onClick={() => handleDownloadDoc(true)}>
+                    <Download className="mr-2 h-4 w-4" />
+                    {language === "zh-TW" ? "下載收據" : "Receipt"}
+                  </Button>
                 )}
               </div>
             </div>

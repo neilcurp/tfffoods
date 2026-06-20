@@ -89,6 +89,7 @@ const OrderDetails = () => {
 
   const handlePrint = (orderId: string) => {
     const url = new URL(`/api/orders/${orderId}/print`, window.location.origin);
+    url.searchParams.set("lang", language);
     window.open(url.toString(), "_blank");
   };
 
@@ -97,6 +98,17 @@ const OrderDetails = () => {
       `/api/orders/${orderId}/download`,
       window.location.origin
     );
+    url.searchParams.set("lang", language);
+    window.open(url.toString(), "_blank");
+  };
+
+  const handleDownloadReceipt = (invoiceNumber: string) => {
+    const url = new URL(
+      `/api/invoices/${invoiceNumber}/download`,
+      window.location.origin
+    );
+    url.searchParams.set("lang", language);
+    url.searchParams.set("doc", "receipt");
     window.open(url.toString(), "_blank");
   };
 
@@ -145,6 +157,16 @@ const OrderDetails = () => {
               <Download className="h-4 w-4 mr-2" />
               {t("orders.details.actions.download")}
             </Button>
+            {["processing", "shipped", "delivered"].includes(order.status) &&
+              order.invoiceNumber && (
+                <Button
+                  variant="default"
+                  onClick={() => handleDownloadReceipt(order.invoiceNumber)}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  {language === "zh-TW" ? "下載收據" : "Download receipt"}
+                </Button>
+              )}
           </div>
         </div>
 
