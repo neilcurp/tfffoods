@@ -202,7 +202,9 @@ export const authOptions: NextAuthOptions = {
     },
     async jwt({ token, user }) {
       if (user) {
-        token.id = user.id;
+        const userId = String(user.id ?? (user as { _id?: string })._id);
+        token.id = userId;
+        token._id = userId;
         token.email = user.email;
         token.role = user.role;
         token.admin = user.admin;
@@ -211,7 +213,9 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session, token }) {
       if (token) {
-        session.user.id = token.id;
+        const userId = String(token._id ?? token.id);
+        session.user.id = userId;
+        session.user._id = userId;
         session.user.email = token.email;
         session.user.role = token.role;
         session.user.admin = token.admin;

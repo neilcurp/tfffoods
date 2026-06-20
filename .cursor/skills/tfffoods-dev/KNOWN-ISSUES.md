@@ -4,6 +4,14 @@ Append a dated entry under "Fix log" whenever you resolve a root-cause issue. Ch
 
 ## Fix log
 
+### 2026-06-20 — Order/invoice print & download fixed (session `_id` + Next 16 params)
+- **Symptom:** Print/Download on `/orders/[orderId]` opened a new tab with `{"error":"Unauthorized"}` or failed silently; invoice PDF routes had the same traps.
+- **Root cause 1:** `auth.config.ts` session callback set `session.user.id` but never `session.user._id`. Print/download (and 7 other routes) authorized with `session.user._id`, which was always `undefined` for non-admins → 401.
+- **Root cause 2:** `app/api/orders/[orderId]/print|download` and `app/api/invoices/[invoiceNumber]/print|download` used sync `params.orderId` / `params.invoiceNumber`. Next.js 16 passes `params` as a `Promise` — un-awaited → undefined ID → 404.
+- **Root cause 3:** jsPDF `doc.output()` without `"arraybuffer"` returned a string, risking corrupted PDF bytes.
+- **Fix:** JWT + session callbacks now persist `_id` (same value as `id`). PDF routes: `await context.params`, `waitForConnection`, `doc.output("arraybuffer")`, auth fallback `session.user._id ?? session.user.id`. Routes fixed: order print/download, invoice print/download.
+- **Note:** Existing logged-in users must **log out and log back in** (or wait for JWT refresh) to pick up `_id` on their session token.
+
 ### 2026-06-07 — User auth schema fixed + cleanup (deps, PII logs)
 - **User schema (functional auth bug):** `utils/models/User.ts` was missing `password` and `profileImage`. With Mongoose strict mode, `register` saved users with **no password**, so credentials login always failed (`bcrypt.compare(pw, "")`). Added both fields (plain, not `select:false`, to match readers: `auth.config` `findOne`, `changPassword`, admin routes' `.select("-password")`). Also added `connectToDatabase()` + `waitForConnection()` to `app/api/register/route.ts` (it queried with no connection under `bufferCommands:false`). *Full login test pending DB cluster restore.*
 - **Removed unused deps:** `@sendgrid/mail`, `@aws-sdk/client-ses`, `express` (verified no app imports). Removed 136 packages; app still serves 200.
@@ -51,7 +59,7 @@ Append a dated entry under "Fix log" whenever you resolve a root-cause issue. Ch
 
 ### Dead / misleading auth
 5. **`requireAuth` / `requireAdmin` not enforced** in `utils/routeHandler.ts` (destructured line 16, never used). Routes using `createRouteHandler({ requireAdmin: true })` are NOT protected — add an explicit `getServerSession` check, or implement enforcement in `withDatabaseConnection`.
-6. **JWT callback drops user fields** (`auth.config.ts` jwt callback) — only `id/email/role/admin` persisted; `profileImage`/`address`/`phone` expected client-side are lost.
+6. ~~**JWT callback drops user fields**~~ **PARTIALLY FIXED 2026-06-20** — `_id` now persisted in JWT + session (same as `id`). `profileImage`/`address`/`phone` still not in token (client loads via `/api/userData`).
 7. **JWT/PII logs** — ~~auth callbacks~~ **FIXED 2026-06-07** (auth.config + `UserSection.tsx` `DEBUG SESSION` removed). `store/cartStore.ts` still has debug `console.log`s (lower priority).
 
 ### Data model

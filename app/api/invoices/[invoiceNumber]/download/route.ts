@@ -1,16 +1,18 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/auth.config";
-import { connectToDatabase } from "@/utils/database";
+import { connectToDatabase, waitForConnection } from "@/utils/database";
 import Invoice from "@/utils/models/Invoice";
 import User from "@/utils/models/User";
 import Product from "@/utils/models/Product";
 import { jsPDF } from "jspdf";
 import { format } from "date-fns";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(
   request: Request,
-  { params }: { params: { invoiceNumber: string } }
+  context: { params: Promise<{ invoiceNumber: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -18,10 +20,18 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { invoiceNumber } = await context.params;
     await connectToDatabase();
+    const isConnected = await waitForConnection(10000);
+    if (!isConnected) {
+      return NextResponse.json(
+        { error: "Database unavailable" },
+        { status: 503 }
+      );
+    }
 
     const invoice = await Invoice.findOne({
-      invoiceNumber: params.invoiceNumber,
+      invoiceNumber,
     })
       .populate({
         path: "user",
@@ -39,10 +49,10 @@ export async function GET(
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
-    // Check authorization
+    const userId = session.user._id ?? session.user.id;
     if (
       !session.user.admin &&
-      invoice.user._id.toString() !== session.user._id
+      invoice.user._id.toString() !== userId
     ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -157,8 +167,7 @@ export async function GET(
     doc.text("Total:", 130, yPos);
     doc.text(`$${invoice.amount.toFixed(2)}`, 175, yPos);
 
-    // Get the PDF as bytes
-    const pdfBytes = doc.output();
+    const pdfBytes = doc.output("arraybuffer");
 
     // Return PDF with appropriate headers for download
     return new NextResponse(pdfBytes, {

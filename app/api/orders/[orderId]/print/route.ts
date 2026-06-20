@@ -1,15 +1,17 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/auth.config";
-import { connectToDatabase } from "@/utils/database";
-import Order from "@/utils/models/Order";
+import { connectToDatabase, waitForConnection } from "@/utils/database";
+import { Order } from "@/utils/models/Order";
 import Product from "@/utils/models/Product";
 import { jsPDF } from "jspdf";
 import { format } from "date-fns";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(
   request: Request,
-  { params }: { params: { orderId: string } }
+  context: { params: Promise<{ orderId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -17,8 +19,15 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const orderId = params.orderId;
+    const { orderId } = await context.params;
     await connectToDatabase();
+    const isConnected = await waitForConnection(10000);
+    if (!isConnected) {
+      return NextResponse.json(
+        { error: "Database unavailable" },
+        { status: 503 }
+      );
+    }
 
     const order = await Order.findById(orderId)
       .populate({
@@ -32,8 +41,8 @@ export async function GET(
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
-    // Check authorization
-    if (!session.user.admin && order.user.toString() !== session.user._id) {
+    const userId = session.user._id ?? session.user.id;
+    if (!session.user.admin && order.user.toString() !== userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -159,8 +168,7 @@ export async function GET(
     doc.text("Total:", 130, yPos);
     doc.text(`$${order.total.toFixed(2)}`, 175, yPos);
 
-    // Get the PDF as bytes
-    const pdfBytes = doc.output();
+    const pdfBytes = doc.output("arraybuffer");
 
     // Return PDF with appropriate headers
     return new NextResponse(pdfBytes, {
