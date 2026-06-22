@@ -22,6 +22,7 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { useTranslation } from "@/providers/language/LanguageContext";
 import { LayoutDashboard, Package } from "lucide-react";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { useConfirm } from "@/components/ui/confirm-provider";
 
 interface Product {
   _id: string;
@@ -50,6 +51,7 @@ export default function AdminProductsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const { t, language } = useTranslation();
+  const confirm = useConfirm();
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
   // Add states for products
   const [isLoading, setIsLoading] = useState(true);
@@ -171,7 +173,17 @@ export default function AdminProductsPage() {
     return null;
   }
 
-  const handleDeleteProduct = async (productId: string) => {
+  const handleDeleteProduct = async (productId: string, productName?: string) => {
+    const confirmed = await confirm({
+      title: t("product.admin.actions.delete"),
+      description: productName
+        ? `${t("product.admin.delete.confirm")} (${productName})`
+        : t("product.admin.delete.confirm"),
+      confirmText: t("product.admin.actions.delete"),
+      cancelText: t("common.cancel"),
+    });
+    if (!confirmed) return;
+
     console.log("🗑️ Delete initiated:", {
       productId,
       timestamp: new Date().toISOString(),
@@ -251,7 +263,7 @@ export default function AdminProductsPage() {
                   <Button
                     size="icon"
                     variant="destructive"
-                    onClick={() => handleDeleteProduct(product._id)}
+                    onClick={() => handleDeleteProduct(product._id, product.name)}
                     title={t("product.admin.actions.delete")}
                   >
                     <Trash className="h-4 w-4" />
@@ -329,7 +341,7 @@ export default function AdminProductsPage() {
                   <Button
                     variant="destructive"
                     size="sm"
-                    onClick={() => handleDeleteProduct(product._id)}
+                    onClick={() => handleDeleteProduct(product._id, product.name)}
                     title={t("product.admin.actions.delete")}
                   >
                     <Trash className="w-4 h-4" />

@@ -7,9 +7,9 @@ import { ObjectId } from "mongodb";
 import type { LogisticsVehicle, VehicleStatus } from "@/types/logistics";
 
 interface Params {
-  params: {
+  params: Promise<{
     vehicleId: string;
-  };
+  }>;
 }
 
 interface UpdateData {
@@ -37,7 +37,7 @@ export const dynamic = "force-dynamic";
 // Get a single vehicle
 export async function GET(
   request: Request,
-  { params }: { params: { vehicleId: string } }
+  { params }: Params
 ): Promise<NextResponse<LogisticsVehicle | { error: string }>> {
   try {
     const resolvedParams = await params;
@@ -86,6 +86,7 @@ export async function PUT(
 
     await connect();
 
+    const { vehicleId } = await params;
     const body = await request.json();
     const updateData: UpdateData = {};
 
@@ -115,7 +116,7 @@ export async function PUT(
     }
 
     const updatedVehicle = await Logistics.findOneAndUpdate(
-      { _id: new ObjectId(params.vehicleId) },
+      { _id: new ObjectId(vehicleId) },
       { $set: updateData },
       { new: true }
     );

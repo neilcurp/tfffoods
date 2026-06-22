@@ -6,13 +6,15 @@ import dbConnect from "@/utils/config/dbConnection";
 
 export async function POST(
   request: Request,
-  { params }: { params: { vehicleId: string } }
+  { params }: { params: Promise<{ vehicleId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.admin) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
+
+    const { vehicleId } = await params;
 
     await dbConnect();
 
@@ -25,7 +27,7 @@ export async function POST(
     }
 
     // Find and update the vehicle
-    const vehicle = await Vehicle.findById(params.vehicleId);
+    const vehicle = await Vehicle.findById(vehicleId);
     if (!vehicle) {
       return new NextResponse("Vehicle not found", { status: 404 });
     }

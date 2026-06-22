@@ -40,6 +40,7 @@
   "deletingAccount": "Deleting Account...",
   "closeAccount": "Close Account",
   "deleteConfirm": "Are you sure you want to delete your account? This action cannot be undone.",
+  "deleteSubscriberConfirm": "Are you sure you want to delete this subscriber? This action cannot be undone.",
   "sortOptions": {
     "price_asc": "Price: Low to High",
     "price_desc": "Price: High to Low",

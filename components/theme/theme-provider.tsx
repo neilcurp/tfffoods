@@ -5,6 +5,7 @@ import {
   ThemeProvider as NextThemesProvider,
   type ThemeProviderProps,
 } from "next-themes";
+import { cachedGet } from "@/utils/services/clientCache";
 
 export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
   const [mounted, setMounted] = React.useState(false);
@@ -22,6 +23,7 @@ export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
       backgroundOpacity: 100,
       cardOpacity: 100,
       navbarOpacity: 100,
+      fontScale: 100,
     },
     dark: {
       background: "#1a1a1a",
@@ -36,6 +38,7 @@ export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
       backgroundOpacity: 100,
       cardOpacity: 100,
       navbarOpacity: 100,
+      fontScale: 100,
     },
   });
 
@@ -49,9 +52,10 @@ export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
         return;
       }
 
-      const response = await fetch("/api/theme-settings");
-      const data = await response.json();
-      if (data.themeSettings) {
+      const data = await cachedGet<{ themeSettings?: typeof themeSettings }>(
+        "/api/theme-settings"
+      );
+      if (data?.themeSettings) {
         setThemeSettings(data.themeSettings);
         // Dispatch theme update event
         window.dispatchEvent(new CustomEvent("themeUpdate"));
@@ -59,6 +63,7 @@ export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
     } catch (error) {
       console.error("Failed to load/update theme settings:", error);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Load theme settings on mount
@@ -114,6 +119,17 @@ export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
       const isDark = theme === "dark";
       const colors = isDark ? themeSettings.dark : themeSettings.light;
 
+      // Apply global font scale by adjusting the root rem. Tailwind text-* and
+      // spacing are rem-based, so this scales the whole UI (titles, headers,
+      // body, components) proportionally. Clamp to a safe range so layouts
+      // never break from an extreme value.
+      const BASE_REM_PX = 16;
+      const rawScale = (colors as { fontScale?: number }).fontScale ?? 100;
+      const fontScale = Math.min(Math.max(rawScale, 75), 150);
+      document.documentElement.style.fontSize = `${
+        (BASE_REM_PX * fontScale) / 100
+      }px`;
+
       // Apply background color
       const bgHSL = hexToHSL(colors.background);
       document.documentElement.style.setProperty(
@@ -157,9 +173,12 @@ export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
 
       // Apply text colors
       const textHSL = hexToHSL(colors.text);
+      // Admin dark-theme text can be saved too dark; keep sidebar/page text readable.
+      const readableTextHSL =
+        isDark && textHSL.l < 50 ? { ...textHSL, l: 95 } : textHSL;
       document.documentElement.style.setProperty(
         "--foreground",
-        `${textHSL.h} ${textHSL.s}% ${textHSL.l}%`
+        `${readableTextHSL.h} ${readableTextHSL.s}% ${readableTextHSL.l}%`
       );
 
       // Apply muted text colors
@@ -173,6 +192,28 @@ export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
       const borderHSL = hexToHSL(colors.border);
       document.documentElement.style.setProperty(
         "--border",
+        `${borderHSL.h} ${borderHSL.s}% ${borderHSL.l}%`
+      );
+
+      // Keep sidebar tokens in sync with the active theme (profile menu, etc.)
+      document.documentElement.style.setProperty(
+        "--sidebar-background",
+        `${cardHSL.h} ${cardHSL.s}% ${cardHSL.l}%`
+      );
+      document.documentElement.style.setProperty(
+        "--sidebar-foreground",
+        `${readableTextHSL.h} ${readableTextHSL.s}% ${readableTextHSL.l}%`
+      );
+      document.documentElement.style.setProperty(
+        "--sidebar-accent",
+        `${borderHSL.h} ${borderHSL.s}% ${borderHSL.l}%`
+      );
+      document.documentElement.style.setProperty(
+        "--sidebar-accent-foreground",
+        `${readableTextHSL.h} ${readableTextHSL.s}% ${readableTextHSL.l}%`
+      );
+      document.documentElement.style.setProperty(
+        "--sidebar-border",
         `${borderHSL.h} ${borderHSL.s}% ${borderHSL.l}%`
       );
 
@@ -247,39 +288,44 @@ export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
     };
   }, [applyThemeColors]);
 
-  // Handle theme updates
+  // Handle theme updates. We only update state here; the effect above
+  // (keyed on applyThemeColors) re-applies the colors exactly once with the
+  // fresh values. Applying directly here would use a stale closure and cause
+  // an old→new→old flash while React's state update is still pending.
   React.useEffect(() => {
-    const handleThemeUpdate = async () => {
+    const handleThemeUpdate = async (event?: Event) => {
+      // Prefer settings passed directly on the event to skip a refetch race.
+      const detail = (event as CustomEvent | undefined)?.detail;
+      if (detail?.themeSettings) {
+        setThemeSettings(detail.themeSettings);
+        return;
+      }
       try {
         const response = await fetch("/api/theme-settings");
         const data = await response.json();
         if (data.themeSettings) {
           setThemeSettings(data.themeSettings);
-          const isDark = document.documentElement.classList.contains("dark");
-          applyThemeColors(isDark ? "dark" : "light");
         }
       } catch (error) {
         console.error("Failed to update theme:", error);
       }
     };
 
-    // Listen for both storage and custom theme update events
-    window.addEventListener("storage", (e: StorageEvent) => {
-      if (e.key === "themeColors") {
-        handleThemeUpdate();
-      }
-    });
-    window.addEventListener("themeUpdate", handleThemeUpdate);
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === "themeColors") handleThemeUpdate();
+    };
+
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener("themeUpdate", handleThemeUpdate as EventListener);
 
     return () => {
-      window.removeEventListener("storage", (e: StorageEvent) => {
-        if (e.key === "themeColors") {
-          handleThemeUpdate();
-        }
-      });
-      window.removeEventListener("themeUpdate", handleThemeUpdate);
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener(
+        "themeUpdate",
+        handleThemeUpdate as EventListener
+      );
     };
-  }, [applyThemeColors]);
+  }, []);
 
   if (!mounted) {
     return null;

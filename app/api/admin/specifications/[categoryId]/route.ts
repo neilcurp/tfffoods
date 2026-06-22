@@ -30,7 +30,7 @@ export const dynamic = "force-dynamic";
 // GET specifications for a category
 export async function GET(
   request: Request,
-  { params }: { params: { categoryId: string } }
+  { params }: { params: Promise<{ categoryId: string }> }
 ) {
   try {
     const resolvedParams = await params;
@@ -76,7 +76,7 @@ export async function GET(
 // POST to update specifications for a category
 export async function POST(
   request: Request,
-  { params }: { params: { categoryId: string } }
+  { params }: { params: Promise<{ categoryId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -84,10 +84,12 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { categoryId } = await params;
+
     await connectToDatabase();
 
     // Validate ObjectId
-    if (!Types.ObjectId.isValid(params.categoryId)) {
+    if (!Types.ObjectId.isValid(categoryId)) {
       return NextResponse.json(
         { error: "Invalid category ID format" },
         { status: 400 }
@@ -175,7 +177,7 @@ export async function POST(
 
     // Update the category with new specifications
     const result = await Category.findOneAndUpdate(
-      { _id: params.categoryId },
+      { _id: categoryId },
       { $set: { specifications: validatedSpecs } },
       {
         new: true,
@@ -191,7 +193,7 @@ export async function POST(
     }
 
     // Verify the update
-    const verifyCategory = await Category.findById(params.categoryId);
+    const verifyCategory = await Category.findById(categoryId);
     if (!verifyCategory?.specifications?.length) {
       return NextResponse.json(
         { error: "Failed to save specifications" },

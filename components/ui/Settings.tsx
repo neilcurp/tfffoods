@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import toast from "react-hot-toast";
 import { User, Lock, Bell, Trash } from "lucide-react";
 import { useTranslation } from "@/providers/language/LanguageContext";
+import { useConfirm } from "@/components/ui/confirm-provider";
 import { NotificationSettings } from "./NotificationSettings";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import useCartStore from "@/store/cartStore";
@@ -57,6 +58,7 @@ const SettingsSkeleton = () => {
 
 const Settings = () => {
   const { t } = useTranslation();
+  const confirm = useConfirm();
   const { data: session, status } = useSession();
   const router = useRouter();
   const clearCart = useCartStore((state) => state.clearCart);
@@ -131,7 +133,13 @@ const Settings = () => {
       return;
     }
 
-    if (window.confirm(t("profile.settings.deleteAcc.warning"))) {
+    const confirmed = await confirm({
+      title: t("common.delete"),
+      description: t("profile.settings.deleteAcc.warning"),
+      confirmText: t("common.delete"),
+      cancelText: t("common.cancel"),
+    });
+    if (confirmed) {
       setIsLoading(true);
       try {
         const res = await axios.delete("/api/delete-account");

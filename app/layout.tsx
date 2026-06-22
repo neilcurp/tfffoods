@@ -1,4 +1,4 @@
-import { Inter } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { Suspense } from "react";
 import dynamic from "next/dynamic";
@@ -11,6 +11,7 @@ import { CloudinaryProvider } from "@/components/providers/CloudinaryProvider";
 import { LanguageProvider } from "@/providers/language/LanguageContext";
 import { CartUIProvider } from "@/components/ui/CartUIContext";
 import { WishlistProvider } from "@/providers/WishlistProvider";
+import { ConfirmProvider } from "@/components/ui/confirm-provider";
 
 // Dynamically import components with loading fallbacks
 const Navbar = dynamic(() => import("@/components/Navbar/Navbar"), {
@@ -86,7 +87,15 @@ const UserProvider = dynamic(
   { ssr: true }
 );
 
-const inter = Inter({ subsets: ["latin"] });
+// Self-hosted Inter (variable). Avoids the build-time fetch to
+// fonts.gstatic.com that `next/font/google` requires — that network call fails
+// on machines/CI that can't reach Google's font CDN and breaks `next build`.
+const inter = localFont({
+  src: "./fonts/inter-latin-variable.woff2",
+  display: "swap",
+  weight: "100 900",
+  variable: "--font-sans",
+});
 
 export const metadata = {
   title: "tummy foods",
@@ -99,7 +108,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={inter.variable}>
       <head />
       <body className={`${inter.className} app-background min-h-screen`}>
         <GoogleMapsScript />
@@ -128,14 +137,16 @@ export default function RootLayout({
                                   <ContactPageProvider>
                                     <CartProvider>
                                       <CartUIProvider>
-                                        <div className="flex flex-col min-h-screen">
-                                          <Navbar />
-                                          <main className="flex-grow">
-                                            {children}
-                                          </main>
-                                          <Footer />
-                                        </div>
-                                        <Toaster position="top-right" />
+                                        <ConfirmProvider>
+                                          <div className="flex flex-col min-h-screen">
+                                            <Navbar />
+                                            <main className="flex-grow">
+                                              {children}
+                                            </main>
+                                            <Footer />
+                                          </div>
+                                          <Toaster position="top-right" />
+                                        </ConfirmProvider>
                                       </CartUIProvider>
                                     </CartProvider>
                                   </ContactPageProvider>

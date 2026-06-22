@@ -53,6 +53,8 @@
     "submitSuccess": "評論提交成功！",
     "updateSuccess": "評論更新成功",
     "deleteSuccess": "評論刪除成功",
+    "deleteConfirmTitle": "刪除評論？",
+    "deleteConfirm": "確定要刪除此評論嗎？此操作無法復原。",
     "submitError": "提交評論失敗",
     "updateError": "更新評論失敗",
     "deleteError": "刪除評論失敗",

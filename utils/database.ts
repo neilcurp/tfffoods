@@ -113,26 +113,40 @@ export async function disconnectFromDatabase() {
   }
 }
 
-// Add connection event handlers
-mongoose.connection.on("connected", () => {
-  logger.info("MongoDB connected successfully");
-});
+// Register connection event handlers EXACTLY ONCE.
+//
+// In dev, Next.js/Turbopack evaluates this module in several compiled bundles
+// (route runtime, proxy.ts context, HMR reloads). Without this guard each
+// evaluation re-attaches the listeners, so a single connection event gets
+// logged N times (the "disconnected ×3 / connected ×3" noise in the terminal).
+declare global {
+  // eslint-disable-next-line no-var
+  var mongooseListenersRegistered: boolean | undefined;
+}
 
-mongoose.connection.on("error", (error) => {
-  logger.error("MongoDB connection error:", {
-    error,
-    stack: error instanceof Error ? error.stack : undefined,
+if (!global.mongooseListenersRegistered) {
+  global.mongooseListenersRegistered = true;
+
+  mongoose.connection.on("connected", () => {
+    logger.info("MongoDB connected successfully");
   });
-});
 
-mongoose.connection.on("disconnected", () => {
-  logger.info("MongoDB disconnected");
-  cached.conn = null;
-  cached.promise = null;
-});
+  mongoose.connection.on("error", (error) => {
+    logger.error("MongoDB connection error:", {
+      error,
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+  });
 
-process.on("SIGINT", async () => {
-  await disconnectFromDatabase();
-  logger.info("MongoDB connection closed through app termination");
-  process.exit(0);
-});
+  mongoose.connection.on("disconnected", () => {
+    logger.info("MongoDB disconnected");
+    cached.conn = null;
+    cached.promise = null;
+  });
+
+  process.on("SIGINT", async () => {
+    await disconnectFromDatabase();
+    logger.info("MongoDB connection closed through app termination");
+    process.exit(0);
+  });
+}

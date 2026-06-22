@@ -8,6 +8,7 @@ import Image from "next/image";
 import { CldUploadButton } from "next-cloudinary";
 import useSWR, { mutate } from "swr";
 import { useTranslation } from "@/providers/language/LanguageContext";
+import { useConfirm } from "@/components/ui/confirm-provider";
 import type { Review as GlobalReview } from "@/types";
 
 // Local review type that extends the global one with UI-specific fields
@@ -38,6 +39,7 @@ const ReviewSection = ({
   setAverageRating,
 }: Props) => {
   const { t } = useTranslation();
+  const confirm = useConfirm();
   const [newReview, setNewReview] = useState({
     rating: 5,
     comment: "",
@@ -89,6 +91,14 @@ const ReviewSection = ({
   };
 
   const handleDeleteReview = async (reviewId: string) => {
+    const confirmed = await confirm({
+      title: t("review.messages.deleteConfirmTitle"),
+      description: t("review.messages.deleteConfirm"),
+      confirmText: t("common.delete"),
+      cancelText: t("common.cancel"),
+    });
+    if (!confirmed) return;
+
     let success = false;
     try {
       await axios.delete(`/api/review?reviewId=${reviewId}`);

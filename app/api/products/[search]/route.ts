@@ -5,11 +5,11 @@ import { NextResponse } from "next/server";
 
 export async function GET(
   request: Request,
-  { params }: { params: { search: string } }
+  { params }: { params: Promise<{ search: string }> }
 ) {
   try {
     await connect();
-    const searchTerm = params.search;
+    const { search: searchTerm } = await params;
     const searchTermRegex = new RegExp(searchTerm, "i");
 
     const foundProducts = await Product.find({

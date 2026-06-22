@@ -8,6 +8,7 @@ import { LayoutDashboard, Mail } from "lucide-react";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { useTranslation } from "@/providers/language/LanguageContext";
+import { useConfirm } from "@/components/ui/confirm-provider";
 import {
   Table,
   TableBody,
@@ -39,6 +40,7 @@ export default function NewsletterManagementPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const { t } = useTranslation();
+  const confirm = useConfirm();
   const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -123,7 +125,13 @@ export default function NewsletterManagementPage() {
   };
 
   const deleteSubscriber = async (subscriberId: string) => {
-    if (!window.confirm(t("common.deleteConfirm"))) return;
+    const confirmed = await confirm({
+      title: t("common.delete"),
+      description: t("common.deleteSubscriberConfirm"),
+      confirmText: t("common.delete"),
+      cancelText: t("common.cancel"),
+    });
+    if (!confirmed) return;
 
     try {
       setActionLoading(subscriberId);

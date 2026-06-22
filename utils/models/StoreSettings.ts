@@ -249,6 +249,7 @@ const storeSettingsSchema = new mongoose.Schema(
         backgroundOpacity: { type: Number, default: 100 },
         cardOpacity: { type: Number, default: 100 },
         navbarOpacity: { type: Number, default: 100 },
+        fontScale: { type: Number, default: 100 },
       },
       dark: {
         background: { type: String, default: "#1a1a1a" },
@@ -263,6 +264,7 @@ const storeSettingsSchema = new mongoose.Schema(
         backgroundOpacity: { type: Number, default: 100 },
         cardOpacity: { type: Number, default: 100 },
         navbarOpacity: { type: Number, default: 100 },
+        fontScale: { type: Number, default: 100 },
       },
     },
   },

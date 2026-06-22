@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { CldUploadButton } from "next-cloudinary";
+import { cachedGet } from "@/utils/services/clientCache";
 
 const GallerySlider = () => {
   const [images, setImages] = useState<string[]>([]);
@@ -14,12 +15,15 @@ const GallerySlider = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/gallery")
-      .then((res) => res.json())
+    cachedGet<{ images?: string[] }>("/api/gallery")
       .then((data) => {
-        setImages(data.images || []);
-        setIsLoading(false);
-      });
+        setImages(data?.images || []);
+      })
+      .catch((error) => {
+        console.error("Error fetching gallery:", error);
+        setImages([]);
+      })
+      .finally(() => setIsLoading(false));
   }, []);
 
   const nextSlide = () => {

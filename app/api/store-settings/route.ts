@@ -60,30 +60,37 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.admin) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Read the request body EXACTLY ONCE, before the retry loop. A Request body
+  // is a single-use stream, so reading it inside the loop would throw
+  // "Body has already been read" on the first retry and mask the real error.
+  let body: { settings?: unknown };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      { error: "Invalid JSON body" },
+      { status: 400 }
+    );
+  }
+
+  const { settings } = body;
+  if (!settings) {
+    return NextResponse.json({ error: "No settings provided" }, { status: 400 });
+  }
+
   let retries = 3;
 
   while (retries > 0) {
     try {
-      const session = await getServerSession(authOptions);
-      if (!session?.user?.admin) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-
       await connectToDatabase();
       const isConnected = await waitForConnection();
       if (!isConnected) {
         throw new Error("Database connection timeout");
-      }
-
-      const body = await request.json();
-      console.log("Received data:", JSON.stringify(body, null, 2));
-
-      const { settings } = body;
-      if (!settings) {
-        return NextResponse.json(
-          { error: "No settings provided" },
-          { status: 400 }
-        );
       }
 
       // Update settings

@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Star } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useTranslation } from "@/providers/language/LanguageContext";
+import { cachedGet } from "@/utils/services/clientCache";
 
 interface Product {
   id: string;
@@ -27,10 +28,8 @@ const BestSellingProducts: React.FC = () => {
     const fetchBestSellingProducts = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch("/api/products/bestselling");
-        if (!response.ok) throw new Error("Failed to fetch products");
-        const data = await response.json();
-        setProducts(data);
+        const data = await cachedGet<Product[]>("/api/products/bestselling");
+        setProducts(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error("Error fetching best-selling products:", error);
         setProducts([]);

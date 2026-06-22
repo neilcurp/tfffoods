@@ -33,7 +33,7 @@ export function SiteHeader() {
         <div className="flex items-center gap-1">
           <SidebarTrigger className="-ml-3" />
           <Separator orientation="vertical" className="h-6" />
-          <h1 className="text-lg font-medium m-0 leading-none">
+          <h1 className="m-0 text-lg font-medium leading-none text-foreground">
             {getHeaderTitle()}
           </h1>
         </div>

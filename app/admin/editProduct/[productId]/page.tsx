@@ -474,6 +474,30 @@ const EditProduct = () => {
       return;
     }
 
+    if (!product.brand) {
+      toast.error("Please select a brand");
+      setIsLoading(false);
+      return;
+    }
+
+    if (!product.displayNames.en || !product.displayNames["zh-TW"]) {
+      toast.error(
+        language === "en" ? "Product name cannot be empty" : "產品名稱不能為空"
+      );
+      setIsLoading(false);
+      return;
+    }
+
+    if (!product.descriptions.en || !product.descriptions["zh-TW"]) {
+      toast.error(
+        language === "en"
+          ? "Product description cannot be empty"
+          : "產品描述不能為空"
+      );
+      setIsLoading(false);
+      return;
+    }
+
     // Check required specifications
     const missingSpecs = product.specifications.filter((spec) => {
       if (!spec.required) return false;

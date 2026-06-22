@@ -39,7 +39,10 @@ export async function POST(request: Request) {
       error instanceof Error ? error.message : error
     );
     return NextResponse.json(
-      { error: "Failed to create brand" },
+      {
+        error:
+          error instanceof Error ? error.message : "Failed to create brand",
+      },
       { status: 500 }
     );
   }
@@ -70,7 +73,10 @@ export async function PUT(request: Request) {
   } catch (error) {
     console.error("Error updating brand:", error);
     return NextResponse.json(
-      { error: "Failed to update brand" },
+      {
+        error:
+          error instanceof Error ? error.message : "Failed to update brand",
+      },
       { status: 500 }
     );
   }
@@ -96,7 +102,10 @@ export async function DELETE(request: Request) {
   } catch (error) {
     console.error("Error deleting brand:", error);
     return NextResponse.json(
-      { error: "Failed to delete brand" },
+      {
+        error:
+          error instanceof Error ? error.message : "Failed to delete brand",
+      },
       { status: 500 }
     );
   }

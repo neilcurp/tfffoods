@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -17,12 +17,14 @@ export async function PATCH(
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
+    const { id } = await params;
+
     await connect();
     const body = await request.json();
     const { role, admin } = body;
 
     const user = await User.findByIdAndUpdate(
-      params.id,
+      id,
       { role, admin },
       { new: true }
     ).select("-password");
@@ -39,9 +41,9 @@ export async function PATCH(
 }
 
 interface Params {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export async function DELETE(request: Request, { params }: Params) {
@@ -53,15 +55,17 @@ export async function DELETE(request: Request, { params }: Params) {
       });
     }
 
+    const { id } = await params;
+
     // Don't allow deleting your own account
-    if (params.id === session.user._id) {
+    if (id === session.user._id) {
       return new Response(
         JSON.stringify({ error: "Cannot delete your own account" }),
         { status: 400 }
       );
     }
 
-    const deletedUser = await User.findByIdAndDelete(params.id);
+    const deletedUser = await User.findByIdAndDelete(id);
     if (!deletedUser) {
       return new Response(JSON.stringify({ error: "User not found" }), {
         status: 404,

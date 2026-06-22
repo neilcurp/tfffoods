@@ -12,6 +12,7 @@ import useCartStore from "../../store/cartStore";
 import { CartItem } from "@/types";
 import { useCloudinary } from "@/components/providers/CloudinaryProvider";
 import { useTranslation } from "@/providers/language/LanguageContext";
+import { useConfirm } from "@/components/ui/confirm-provider";
 import {
   CldUploadButton,
   CloudinaryUploadWidgetResults,
@@ -52,6 +53,7 @@ const stripePromise = loadStripe(
 
 export default function CheckoutPage() {
   const { t, language } = useTranslation();
+  const confirm = useConfirm();
   const { data: session, status } = useSession();
   const { userData, loading: userLoading } = useUser();
   const router = useRouter();
@@ -615,9 +617,15 @@ export default function CheckoutPage() {
     }
   };
 
-  const handleCancelOfflinePayment = () => {
+  const handleCancelOfflinePayment = async () => {
     if (hasFormChanges) {
-      const confirmed = window.confirm(t("common.confirmCancel"));
+      const confirmed = await confirm({
+        title: t("common.cancel"),
+        description: t("common.confirmCancel"),
+        confirmText: t("common.confirm"),
+        cancelText: t("common.cancel"),
+        destructive: false,
+      });
       if (!confirmed) {
         return;
       }

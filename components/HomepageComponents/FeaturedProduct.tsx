@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Tag, Star, Box, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTranslation } from "@/providers/language/LanguageContext";
+import { cachedGet } from "@/utils/services/clientCache";
 import HeroImageFallback from "@/public/watch1.jpg";
 
 interface Brand {
@@ -58,11 +59,8 @@ const FeaturedProduct = () => {
   const fetchFeaturedProducts = async () => {
     try {
       setIsLoading(true);
-      const timestamp = new Date().getTime();
-      const response = await fetch(`/api/products/featured?t=${timestamp}`);
-      if (!response.ok) throw new Error("Failed to fetch featured products");
-      const data = await response.json();
-      setProducts(data);
+      const data = await cachedGet<FeaturedProduct[]>("/api/products/featured");
+      setProducts(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Error fetching featured products:", err);
       setProducts([]);

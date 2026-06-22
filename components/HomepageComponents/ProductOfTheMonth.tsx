@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useTranslation } from "@/providers/language/LanguageContext";
+import { cachedGet } from "@/utils/services/clientCache";
 import * as LucideIcons from "lucide-react";
 
 interface ProductOfTheMonth {
@@ -90,10 +91,10 @@ const ProductOfTheMonth = () => {
     const fetchProductOfTheMonth = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch("/api/products/product-of-the-month");
-        if (!response.ok) throw new Error("Failed to fetch product");
-
-        const { data, status } = await response.json();
+        const { data, status } = await cachedGet<{
+          data: ProductOfTheMonth | null;
+          status: string;
+        }>("/api/products/product-of-the-month");
 
         if (status === "success") {
           setProduct(data); // data will be null if no product is set

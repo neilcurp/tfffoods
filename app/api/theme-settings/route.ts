@@ -25,6 +25,7 @@ export async function GET() {
             backgroundOpacity: 100,
             cardOpacity: 100,
             navbarOpacity: 100,
+            fontScale: 100,
           },
           dark: {
             background: "#1a1a1a",
@@ -39,6 +40,7 @@ export async function GET() {
             backgroundOpacity: 100,
             cardOpacity: 100,
             navbarOpacity: 100,
+            fontScale: 100,
           },
         },
       });

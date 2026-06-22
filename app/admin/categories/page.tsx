@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import { Plus, Trash2, Pencil, LayoutDashboard, Grid } from "lucide-react";
 import { useTranslation } from "@/providers/language/LanguageContext";
+import { useConfirm } from "@/components/ui/confirm-provider";
 import { MultiLangInput } from "@/components/MultiLangInput";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import {
@@ -48,6 +49,7 @@ interface ApiError {
 export default function CategoriesPage() {
   const { data: session, status } = useSession();
   const { language, t } = useTranslation();
+  const confirm = useConfirm();
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -212,7 +214,13 @@ export default function CategoriesPage() {
   };
 
   const handleDelete = async (categoryId: string) => {
-    if (!confirm(t("categories.delete.confirm"))) return;
+    const confirmed = await confirm({
+      title: t("common.delete"),
+      description: t("categories.delete.confirm"),
+      confirmText: t("common.delete"),
+      cancelText: t("common.cancel"),
+    });
+    if (!confirmed) return;
 
     try {
       await axios.delete(`/api/admin/categories/${categoryId}`);

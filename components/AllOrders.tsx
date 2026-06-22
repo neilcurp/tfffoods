@@ -18,6 +18,7 @@ import { useSession } from "next-auth/react";
 import { toast } from "react-hot-toast";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import { useTranslation } from "@/providers/language/LanguageContext";
+import { useConfirm } from "@/components/ui/confirm-provider";
 import Image from "next/image";
 import VehicleAssignment from "@/components/logistics/VehicleAssignment";
 import {
@@ -165,6 +166,7 @@ const Orders = ({ filterStatus }: Props) => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { t, language } = useTranslation();
+  const confirm = useConfirm();
   const [orders, setOrders] = useState<Order[]>([]);
   const [periodInvoices, setPeriodInvoices] = useState<any[]>([]);
   const [page, setPage] = useState(1);
@@ -288,7 +290,13 @@ const Orders = ({ filterStatus }: Props) => {
   };
 
   const handleDeleteOrder = async (orderId: string) => {
-    if (window.confirm(t("admin-orders.actions.delete.confirm"))) {
+    const confirmed = await confirm({
+      title: t("common.delete"),
+      description: t("admin-orders.actions.delete.confirm"),
+      confirmText: t("common.delete"),
+      cancelText: t("common.cancel"),
+    });
+    if (confirmed) {
       try {
         const response = await axios.delete(
           `/api/orderAdmin?orderId=${orderId}`

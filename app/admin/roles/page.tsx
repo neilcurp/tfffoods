@@ -33,6 +33,7 @@ import { Label } from "@/components/ui/label";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { LayoutDashboard, Users } from "lucide-react";
 import { useTranslation } from "@/providers/language/LanguageContext";
+import { useConfirm } from "@/components/ui/confirm-provider";
 
 interface User {
   _id: string;
@@ -47,6 +48,7 @@ const RolesPage = () => {
   const { data: session, status } = useSession();
   const router = useRouter();
   const { t } = useTranslation();
+  const confirm = useConfirm();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedRoles, setSelectedRoles] = useState<Record<string, string>>(
@@ -237,7 +239,13 @@ const RolesPage = () => {
   };
 
   const handleDeleteUser = async (userId: string) => {
-    if (!confirm("Are you sure you want to delete this user?")) return;
+    const confirmed = await confirm({
+      title: t("common.delete"),
+      description: "Are you sure you want to delete this user? This action cannot be undone.",
+      confirmText: t("common.delete"),
+      cancelText: t("common.cancel"),
+    });
+    if (!confirmed) return;
 
     try {
       await axios.delete(`/api/admin/users/${userId}`);

@@ -378,6 +378,15 @@ const CreateProduct = () => {
       return;
     }
 
+    if (!product.descriptions.en || !product.descriptions["zh-TW"]) {
+      toast.error(
+        language === "en"
+          ? "Product description cannot be empty"
+          : "產品描述不能為空"
+      );
+      return;
+    }
+
     // Check required specifications
     const missingSpecs = product.specifications.filter((spec) => {
       if (!spec.required) return false;

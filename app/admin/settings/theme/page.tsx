@@ -10,6 +10,13 @@ import { Button } from "@/components/ui/button";
 import toast from "react-hot-toast";
 import { Moon, Sun } from "lucide-react";
 
+const FONT_SCALE_PRESETS = [
+  { label: "Small", value: 90 },
+  { label: "Normal", value: 100 },
+  { label: "Large", value: 110 },
+  { label: "X-Large", value: 125 },
+];
+
 export default function ThemeSettings() {
   const lightPickerRef = useRef<HTMLDivElement>(null);
   const darkPickerRef = useRef<HTMLDivElement>(null);
@@ -198,6 +205,8 @@ export default function ThemeSettings() {
   const [darkCardOpacity, setDarkCardOpacity] = useState(100);
   const [lightNavbarOpacity, setLightNavbarOpacity] = useState(100);
   const [darkNavbarOpacity, setDarkNavbarOpacity] = useState(100);
+  const [lightFontScale, setLightFontScale] = useState(100);
+  const [darkFontScale, setDarkFontScale] = useState(100);
 
   // Load saved colors on mount
   useEffect(() => {
@@ -222,6 +231,7 @@ export default function ThemeSettings() {
           setLightBgOpacity(light.backgroundOpacity);
           setLightCardOpacity(light.cardOpacity);
           setLightNavbarOpacity(light.navbarOpacity);
+          setLightFontScale(light.fontScale ?? 100);
 
           // Set dark mode colors
           setDarkBgColor(dark.background);
@@ -236,6 +246,7 @@ export default function ThemeSettings() {
           setDarkBgOpacity(dark.backgroundOpacity);
           setDarkCardOpacity(dark.cardOpacity);
           setDarkNavbarOpacity(dark.navbarOpacity);
+          setDarkFontScale(dark.fontScale ?? 100);
         }
       } catch (error) {
         console.error("Failed to load theme settings:", error);
@@ -262,6 +273,7 @@ export default function ThemeSettings() {
           backgroundOpacity: lightBgOpacity,
           cardOpacity: lightCardOpacity,
           navbarOpacity: lightNavbarOpacity,
+          fontScale: lightFontScale,
         },
         dark: {
           background: darkBgColor,
@@ -276,6 +288,7 @@ export default function ThemeSettings() {
           backgroundOpacity: darkBgOpacity,
           cardOpacity: darkCardOpacity,
           navbarOpacity: darkNavbarOpacity,
+          fontScale: darkFontScale,
         },
       };
 
@@ -293,14 +306,10 @@ export default function ThemeSettings() {
 
       toast.success("Theme settings saved");
 
-      // Trigger theme update event
-      window.dispatchEvent(new CustomEvent("themeUpdate"));
-
-      // Also dispatch storage event for backward compatibility
+      // Trigger a single theme update carrying the saved settings so the
+      // provider applies them immediately (no refetch race, no flashing).
       window.dispatchEvent(
-        new StorageEvent("storage", {
-          key: "themeColors",
-        })
+        new CustomEvent("themeUpdate", { detail: { themeSettings } })
       );
     } catch (error) {
       console.error("Failed to save theme settings:", error);
@@ -321,6 +330,43 @@ export default function ThemeSettings() {
           </div>
 
           <div className="space-y-4">
+            <div className="rounded-lg border p-3">
+              <Label>Font Size</Label>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {FONT_SCALE_PRESETS.map((preset) => (
+                  <Button
+                    key={preset.value}
+                    type="button"
+                    size="sm"
+                    variant={
+                      lightFontScale === preset.value ? "default" : "outline"
+                    }
+                    onClick={() => setLightFontScale(preset.value)}
+                  >
+                    {preset.label}
+                  </Button>
+                ))}
+              </div>
+              <div className="mt-3 flex items-center gap-2">
+                <input
+                  type="range"
+                  min="75"
+                  max="150"
+                  step="5"
+                  value={lightFontScale}
+                  onChange={(e) => setLightFontScale(Number(e.target.value))}
+                  className="flex-1"
+                />
+                <span className="w-12 text-right">{lightFontScale}%</span>
+              </div>
+              <p
+                className="mt-2 truncate text-muted-foreground"
+                style={{ fontSize: `${(16 * lightFontScale) / 100}px` }}
+              >
+                Sample text preview
+              </p>
+            </div>
+
             <div>
               <Label htmlFor="lightBgColor">Background Color</Label>
               <div className="flex gap-2 mt-1">
@@ -630,6 +676,43 @@ export default function ThemeSettings() {
           </div>
 
           <div className="space-y-4">
+            <div className="rounded-lg border p-3">
+              <Label>Font Size</Label>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {FONT_SCALE_PRESETS.map((preset) => (
+                  <Button
+                    key={preset.value}
+                    type="button"
+                    size="sm"
+                    variant={
+                      darkFontScale === preset.value ? "default" : "outline"
+                    }
+                    onClick={() => setDarkFontScale(preset.value)}
+                  >
+                    {preset.label}
+                  </Button>
+                ))}
+              </div>
+              <div className="mt-3 flex items-center gap-2">
+                <input
+                  type="range"
+                  min="75"
+                  max="150"
+                  step="5"
+                  value={darkFontScale}
+                  onChange={(e) => setDarkFontScale(Number(e.target.value))}
+                  className="flex-1"
+                />
+                <span className="w-12 text-right">{darkFontScale}%</span>
+              </div>
+              <p
+                className="mt-2 truncate text-muted-foreground"
+                style={{ fontSize: `${(16 * darkFontScale) / 100}px` }}
+              >
+                Sample text preview
+              </p>
+            </div>
+
             <div>
               <Label htmlFor="darkBgColor">Background Color</Label>
               <div className="flex gap-2 mt-1">

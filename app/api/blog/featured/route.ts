@@ -23,11 +23,11 @@ export async function GET() {
       .sort({ publishedAt: -1, createdAt: -1 })
       .lean();
 
+    // No featured post is a normal empty state, not an error. Return 200 with
+    // a null body so consumers don't have to treat "empty" as a failure (and
+    // the dev console isn't littered with 404s on every homepage load).
     if (!featuredPost) {
-      return NextResponse.json(
-        { message: "No featured post found" },
-        { status: 404 }
-      );
+      return NextResponse.json(null, { status: 200 });
     }
 
     // Transform the post to ensure proper author structure

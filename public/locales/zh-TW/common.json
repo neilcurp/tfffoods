@@ -40,6 +40,7 @@
   "deletingAccount": "正在刪除帳戶...",
   "closeAccount": "關閉帳戶",
   "deleteConfirm": "您確定要刪除您的帳戶嗎？此操作無法撤消。",
+  "deleteSubscriberConfirm": "您確定要刪除此訂閱者嗎？此操作無法復原。",
   "sortOptions": {
     "price_asc": "價格：從低到高",
     "price_desc": "價格：從高到低",

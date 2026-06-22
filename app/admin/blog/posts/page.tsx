@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { useTranslation } from "@/providers/language/LanguageContext";
+import { useConfirm } from "@/components/ui/confirm-provider";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { LayoutDashboard, FileText } from "lucide-react";
 
@@ -44,6 +45,7 @@ export default function BlogPostsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const { t, language: currentLanguage } = useTranslation();
+  const confirm = useConfirm();
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -119,7 +121,13 @@ export default function BlogPostsPage() {
   }, [session]);
 
   const handleDelete = async (postId: string) => {
-    if (!window.confirm("Are you sure you want to delete this post?")) return;
+    const confirmed = await confirm({
+      title: t("common.delete"),
+      description: "Are you sure you want to delete this post? This action cannot be undone.",
+      confirmText: t("common.delete"),
+      cancelText: t("common.cancel"),
+    });
+    if (!confirmed) return;
 
     try {
       const res = await fetch(`/api/blog/posts/${postId}`, {

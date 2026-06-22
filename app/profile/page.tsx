@@ -537,10 +537,7 @@ export default function ProfilePage() {
   return (
     <SidebarProvider defaultOpen={true}>
       <AppSidebar variant="inset" />
-      <SidebarInset
-        className="!ml-0"
-        style={{ backgroundColor: "hsla(var(--background), 0.5)" }}
-      >
+      <SidebarInset className="!ml-0 bg-background">
         <SiteHeader />
         <div className="flex flex-1 flex-col">
           <div className="flex flex-1 flex-col">
