@@ -9,6 +9,7 @@ import { IBrand } from "@/utils/models/Brand";
 import { shouldShowBrandAdmin } from "@/utils/config/featureFlags";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { numberInputDisplay, parseNumberInput } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -416,11 +417,11 @@ export default function BrandsPage() {
                       <Input
                         type="number"
                         min="0"
-                        value={newBrand.order || 0}
+                        value={numberInputDisplay(newBrand.order)}
                         onChange={(e) =>
                           setNewBrand({
                             ...newBrand,
-                            order: parseInt(e.target.value),
+                            order: parseNumberInput(e.target.value),
                           })
                         }
                         placeholder={
@@ -647,11 +648,14 @@ export default function BrandsPage() {
                   <Input
                     type="number"
                     min="0"
-                    value={editingBrand?.order || 0}
+                    value={numberInputDisplay(editingBrand?.order)}
                     onChange={(e) =>
                       setEditingBrand(
                         editingBrand
-                          ? { ...editingBrand, order: parseInt(e.target.value) }
+                          ? {
+                              ...editingBrand,
+                              order: parseNumberInput(e.target.value),
+                            }
                           : null
                       )
                     }

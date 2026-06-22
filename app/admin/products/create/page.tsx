@@ -18,6 +18,7 @@ import { useTranslation } from "@/providers/language/LanguageContext";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { mutate } from "swr";
+import { numberInputDisplay, parseNumberInput } from "@/lib/utils";
 import type { ProductSpecification } from "@/components/types";
 
 interface Brand {
@@ -272,7 +273,7 @@ const CreateProduct = () => {
         name === "originalPrice" ||
         name === "stock" ||
         name === "order"
-          ? Number(value)
+          ? parseNumberInput(value)
           : value,
     }));
   };
@@ -680,11 +681,12 @@ const CreateProduct = () => {
               <Input
                 type="number"
                 name="netPrice"
-                value={product.netPrice}
+                value={numberInputDisplay(product.netPrice)}
                 onChange={handleChange}
                 onFocus={(e) => e.target.select()}
                 min="0"
                 step="0.01"
+                placeholder={language === "en" ? "Enter net price" : "輸入淨價"}
                 required
               />
             </div>
@@ -695,11 +697,12 @@ const CreateProduct = () => {
               <Input
                 type="number"
                 name="price"
-                value={product.price}
+                value={numberInputDisplay(product.price)}
                 onChange={handleChange}
                 onFocus={(e) => e.target.select()}
                 min="0"
                 step="0.01"
+                placeholder={language === "en" ? "Enter price" : "輸入售價"}
                 required
               />
             </div>
@@ -711,11 +714,14 @@ const CreateProduct = () => {
               <Input
                 type="number"
                 name="originalPrice"
-                value={product.originalPrice}
+                value={numberInputDisplay(product.originalPrice)}
                 onChange={handleChange}
                 onFocus={(e) => e.target.select()}
                 min="0"
                 step="0.01"
+                placeholder={
+                  language === "en" ? "Enter original price" : "輸入原價"
+                }
               />
             </div>
           </div>
@@ -728,10 +734,11 @@ const CreateProduct = () => {
               <Input
                 type="number"
                 name="stock"
-                value={product.stock}
+                value={numberInputDisplay(product.stock)}
                 onChange={handleChange}
                 onFocus={(e) => e.target.select()}
                 min="0"
+                placeholder={language === "en" ? "Enter stock" : "輸入庫存"}
                 required
               />
             </div>
@@ -743,7 +750,7 @@ const CreateProduct = () => {
               <Input
                 type="number"
                 name="order"
-                value={product.order}
+                value={numberInputDisplay(product.order)}
                 onChange={handleChange}
                 onFocus={(e) => e.target.select()}
                 min="0"

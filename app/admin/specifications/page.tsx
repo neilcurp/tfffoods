@@ -5,6 +5,7 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { numberInputDisplay, parseNumberInput } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
@@ -594,11 +595,9 @@ export default function SpecificationsPage() {
                                             type="number"
                                             min="0"
                                             step="0.01"
-                                            value={
-                                              spec.options?.prices?.[
-                                                optionIndex
-                                              ] || 0
-                                            }
+                                            value={numberInputDisplay(
+                                              spec.options?.prices?.[optionIndex]
+                                            )}
                                             onChange={(e) => {
                                               const newOptions = {
                                                 en: [
@@ -614,7 +613,7 @@ export default function SpecificationsPage() {
                                                 ],
                                               };
                                               newOptions.prices[optionIndex] =
-                                                Number(e.target.value) || 0;
+                                                parseNumberInput(e.target.value);
                                               updateSpecification(
                                                 index,
                                                 "options",

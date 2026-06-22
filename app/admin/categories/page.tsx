@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, Trash2, Pencil, LayoutDashboard, Grid } from "lucide-react";
 import { useTranslation } from "@/providers/language/LanguageContext";
 import { useConfirm } from "@/components/ui/confirm-provider";
+import { numberInputDisplay, parseNumberInput } from "@/lib/utils";
 import { MultiLangInput } from "@/components/MultiLangInput";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import {
@@ -420,11 +421,11 @@ export default function CategoriesPage() {
               <Input
                 type="number"
                 min="0"
-                value={newCategory.order || 0}
+                value={numberInputDisplay(newCategory.order)}
                 onChange={(e) =>
                   setNewCategory({
                     ...newCategory,
-                    order: parseInt(e.target.value) || 0,
+                    order: parseNumberInput(e.target.value),
                   })
                 }
               />
@@ -509,13 +510,13 @@ export default function CategoriesPage() {
                 <Input
                   type="number"
                   min="0"
-                  value={editingCategory?.order || 0}
+                  value={numberInputDisplay(editingCategory?.order)}
                   onChange={(e) =>
                     setEditingCategory(
                       editingCategory
                         ? {
                             ...editingCategory,
-                            order: parseInt(e.target.value) || 0,
+                            order: parseNumberInput(e.target.value),
                           }
                         : null
                     )
