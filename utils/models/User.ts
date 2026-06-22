@@ -18,6 +18,7 @@ interface UserDocument extends mongoose.Document {
     promotions: boolean;
   };
   wishlist: mongoose.Types.ObjectId[];
+  cart: Record<string, unknown>[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -86,6 +87,13 @@ const userSchema = new mongoose.Schema<UserDocument>(
         default: [],
       },
     ],
+    // Account-persistent shopping cart. Stored as flexible documents because
+    // cart items carry dynamic `selectedSpecifications` (arbitrary keys with
+    // multilingual { en, "zh-TW" } values) that a strict schema would strip.
+    cart: {
+      type: [mongoose.Schema.Types.Mixed],
+      default: [],
+    },
   },
   {
     timestamps: true,

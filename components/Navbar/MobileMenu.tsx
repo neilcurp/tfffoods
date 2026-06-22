@@ -29,6 +29,7 @@ import { useCartUI } from "@/components/ui/CartUIContext";
 import Cart from "@/components/ui/Cart";
 import CategoryMenu from "@/components/ui/CategoryMenu";
 import { cachedGet } from "@/utils/services/clientCache";
+import { clearClientStorageOnLogout } from "@/utils/clientLogout";
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -102,7 +103,7 @@ const MobileMenu = ({
   const [showSearch, setShowSearch] = useState(false);
   const { t, language } = useTranslation();
   const items = useCartStore((state) => state.items);
-  const clearCart = useCartStore((state) => state.clearCart);
+  const clearLocalCart = useCartStore((state) => state.clearLocalCart);
   const { settings } = useStore();
   const { openCart, closeCart, isOpen: isCartOpen } = useCartUI();
   const [selectedCategory, setSelectedCategory] = useState("All Categories");
@@ -410,18 +411,22 @@ const MobileMenu = ({
                     <button
                       onClick={async () => {
                         try {
-                          // 1. Clear client-side cart
-                          await clearCart();
+                          // 1. Clear the cart in THIS browser only — the
+                          //    account cart stays on the server and reloads on
+                          //    next login (and on other devices).
+                          clearLocalCart();
 
-                          // 2. Use NextAuth's signOut with redirect
+                          // 2. Clear client storage BEFORE redirecting (a
+                          //    redirecting signOut navigates away, so code
+                          //    after it may never run). Preserves theme +
+                          //    language preferences across logout.
+                          clearClientStorageOnLogout();
+
+                          // 3. Use NextAuth's signOut with redirect
                           await signOut({
                             callbackUrl: "/login",
                             redirect: true,
                           });
-
-                          // 3. Clear all client storage
-                          localStorage.clear();
-                          sessionStorage.clear();
                         } catch (error) {
                           console.error("Logout failed:", error);
                           // Even on error, try to redirect

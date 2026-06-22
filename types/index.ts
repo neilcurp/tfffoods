@@ -240,6 +240,7 @@ export interface CartStore {
   addItem: (item: AddToCartItem) => void;
   removeItem: (id: string, selectedSpecs?: Record<string, any>) => void;
   clearCart: () => void;
+  clearLocalCart: () => void;
   getTotalPrice: () => number;
   getTotalItems: () => number;
   updateItemQuantity: (id: string, quantity: number) => void;

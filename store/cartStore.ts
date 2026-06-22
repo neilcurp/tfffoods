@@ -176,6 +176,15 @@ const useCartStore = create<CartStore>()(
           console.error("Failed to clear server cart:", error);
         }
       },
+      // Resets the cart in this browser only, WITHOUT touching the server copy.
+      // Used on logout so the account cart survives and reloads on next login,
+      // while the next person on this device doesn't inherit the items.
+      clearLocalCart: () => {
+        set({ items: [], selectedDeliveryType: 0 });
+        if (typeof window !== "undefined") {
+          window.localStorage.removeItem("cart-storage");
+        }
+      },
       getTotalItems: () =>
         get().items.reduce((total, item) => total + (item.quantity || 1), 0),
       getTotalPrice: () =>
@@ -194,9 +203,13 @@ const useCartStore = create<CartStore>()(
         try {
           // Shared with UserContext via cachedGet so the many callers
           // (CartIcon mount + CartContext effect) collapse into one request.
-          const data = await cachedGet<{ cart?: CartItem[] }>("/api/userData");
-          if (data?.cart) {
-            set((state) => ({ ...state, items: data.cart as CartItem[] }));
+          // /api/userData returns the cart nested under `user`, not top-level.
+          const data = await cachedGet<{ user?: { cart?: CartItem[] } }>(
+            "/api/userData"
+          );
+          const serverCart = data?.user?.cart;
+          if (Array.isArray(serverCart)) {
+            set((state) => ({ ...state, items: serverCart as CartItem[] }));
           }
         } catch (error) {
           console.error("Failed to load server cart:", error);

@@ -6,6 +6,7 @@ export interface CartStore {
   addItem: (item: AddToCartItem) => void;
   removeItem: (id: string) => void;
   clearCart: () => Promise<void>;
+  clearLocalCart: () => void;
   getTotalPrice: () => number;
   getTotalItems: () => number;
   updateItemQuantity: (id: string, quantity: number) => void;

@@ -9,6 +9,7 @@ import { FaUserPen } from "react-icons/fa6";
 import { FileText } from "lucide-react";
 import Image from "next/image";
 import useCartStore from "@/store/cartStore";
+import { clearClientStorageOnLogout } from "@/utils/clientLogout";
 
 interface UserSectionProps {
   session: Session | null;
@@ -16,22 +17,24 @@ interface UserSectionProps {
 
 const UserSection = ({ session }: UserSectionProps) => {
   const { t } = useTranslation();
-  const clearCart = useCartStore((state) => state.clearCart);
+  const clearLocalCart = useCartStore((state) => state.clearLocalCart);
 
   const handleSignOut = async () => {
     try {
-      // 1. Clear client-side cart
-      await clearCart();
+      // 1. Clear the cart in THIS browser only — the account cart stays on the
+      //    server and reloads on next login (and on other devices).
+      clearLocalCart();
 
-      // 2. Use NextAuth's signOut with redirect
+      // 2. Clear client storage BEFORE redirecting (a redirecting signOut
+      //    navigates away, so anything after it may never run). Preserves the
+      //    theme + language preferences so they survive logout.
+      clearClientStorageOnLogout();
+
+      // 3. Use NextAuth's signOut with redirect
       await signOut({
         callbackUrl: "/login",
         redirect: true,
       });
-
-      // 3. Clear all client storage
-      localStorage.clear();
-      sessionStorage.clear();
     } catch (error) {
       console.error("Logout failed:", error);
       // Even on error, try to redirect
