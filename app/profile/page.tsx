@@ -536,7 +536,7 @@ export default function ProfilePage() {
 
   return (
     <SidebarProvider defaultOpen={true}>
-      <AppSidebar variant="inset" />
+      <AppSidebar variant="sidebar" />
       <SidebarInset className="!ml-0 bg-background">
         <SiteHeader />
         <div className="flex flex-1 flex-col">

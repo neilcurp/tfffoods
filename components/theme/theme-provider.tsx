@@ -157,15 +157,14 @@ export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
         String(colors.cardOpacity / 100)
       );
 
-      // Apply navbar colors
+      // Apply navbar colors via CSS variables (the .navbar rule reads these).
+      // This is reliable even though the navbar is dynamically imported and may
+      // not be in the DOM when this runs — unlike the old inline-style loop.
       const navbarHSL = hexToHSL(colors.navbar);
-      const navbarElements = document.getElementsByClassName("navbar");
-      for (let i = 0; i < navbarElements.length; i++) {
-        const navbar = navbarElements[i] as HTMLElement;
-        navbar.style.backgroundColor = `hsla(${navbarHSL.h}, ${navbarHSL.s}%, ${
-          navbarHSL.l
-        }%, ${colors.navbarOpacity / 100})`;
-      }
+      document.documentElement.style.setProperty(
+        "--navbar-background",
+        `${navbarHSL.h} ${navbarHSL.s}% ${navbarHSL.l}%`
+      );
       document.documentElement.style.setProperty(
         "--navbar-opacity",
         String(colors.navbarOpacity / 100)

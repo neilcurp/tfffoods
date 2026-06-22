@@ -51,10 +51,10 @@ export function AppSidebar({ variant = "sidebar" }: AppSidebarProps) {
   return (
     <Sidebar
       variant={variant}
-      className="mt-[100px] h-[calc(100vh-100px)] rounded-none text-sidebar-foreground md:mt-0 md:h-svh"
+      className="rounded-none text-sidebar-foreground md:!top-[var(--navbar-height)] md:!bottom-auto md:!h-[calc(100svh-var(--navbar-height))] md:!max-h-[calc(100svh-var(--navbar-height))]"
     >
       <div className="flex-1 overflow-auto">
-        <SidebarMenu className="space-y-1 px-2 pt-10">
+        <SidebarMenu className="space-y-1 px-2 pt-2">
           {navItems.map((item) => {
             const isActive = activeTab === item.id;
             return (

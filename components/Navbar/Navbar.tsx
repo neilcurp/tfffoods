@@ -66,11 +66,39 @@ const Navbar = () => {
     clearSearch();
   };
 
+  // Keep --navbar-height in sync with the real rendered navbar so fixed panels
+  // (e.g. profile sidebar) sit flush below it. Static guesses (100px) were too
+  // short because the logo is 96px plus padding/margins (~140px+).
+  useEffect(() => {
+    const navbar = document.getElementById("site-navbar");
+    if (!navbar) return;
+
+    const syncNavbarHeight = () => {
+      const height = navbar.getBoundingClientRect().height;
+      if (height > 0) {
+        document.documentElement.style.setProperty(
+          "--navbar-height",
+          `${Math.ceil(height)}px`
+        );
+      }
+    };
+
+    syncNavbarHeight();
+    const observer = new ResizeObserver(syncNavbarHeight);
+    observer.observe(navbar);
+    window.addEventListener("resize", syncNavbarHeight);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", syncNavbarHeight);
+    };
+  }, [isLoading, settings.logo]);
+
   return (
     <>
       {/* Desktop Navbar - Hidden on Mobile */}
-      <nav className="hidden md:block">
-        <div className="navbar app-global-container">
+      <nav className="hidden md:block sticky top-0 z-50">
+        <div id="site-navbar" className="navbar app-global-container">
           <div className="navbar-content flex items-center justify-between">
             {/* Brand Container */}
             <div className="flex items-center">

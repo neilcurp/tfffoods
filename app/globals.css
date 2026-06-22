@@ -25,6 +25,8 @@
   /* Typography System */
   --font-primary: var(--font-sans);
   --font-heading: var(--font-sans);
+  /* Main site navbar height (desktop sticky bar) — synced from DOM in Navbar.tsx */
+  --navbar-height: 140px;
 
   /* Font Sizes */
   --text-xs: 0.75rem; /* 12px */
@@ -155,6 +157,7 @@
     --foreground: 240 10% 3.9%;
     --card: 0 0% 100%;
     --card-foreground: 240 10% 3.9%;
+    --navbar-background: 0 0% 100%;
     --popover: hsla(0, 0%, 100%, 0.7);
     --popover-foreground: 240 10% 3.9%;
     --primary: 240 5.9% 10%;
@@ -178,6 +181,7 @@
     --foreground: 0 0% 98%;
     --card: 240 10% 3.9%;
     --card-foreground: 0 0% 98%;
+    --navbar-background: 240 10% 3.9%;
     --popover: hsla(240, 10%, 3.9%, 0.95);
     --popover-foreground: 0 0% 98%;
     --primary: 0 0% 98%;
@@ -482,9 +486,19 @@
 
 /* Navbar Styles */
 .navbar {
-  @apply bg-white dark:bg-gray-900 shadow-md sticky top-0 z-50 w-full;
+  @apply shadow-md w-full;
   display: flex;
   justify-content: center;
+}
+
+/* Higher specificity (two classes) so the themed background beats the generic
+   `.app-global-container { background-color: inherit }` rule later in this file.
+   Driven by theme settings so the admin transparency/color controls apply even
+   before the (dynamically imported) navbar mounts. */
+.navbar.app-global-container {
+  background-color: hsl(
+    var(--navbar-background, 0 0% 100%) / var(--navbar-opacity, 1)
+  );
 }
 
 .navbar-container {
