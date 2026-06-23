@@ -1,7 +1,6 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { useTranslation } from "@/providers/language/LanguageContext";
 import type { Invoice } from "../invoiceTypes";
 
@@ -14,30 +13,34 @@ export default function AddressesCard({
   invoice,
   formatInvoiceAddress,
 }: AddressesCardProps) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  const firstOrder = invoice.orders?.[0];
+  const deliveryMethod =
+    firstOrder?.deliveryMethodName?.[language] ||
+    firstOrder?.deliveryMethodName?.en ||
+    t("order-details.addresses.notSpecified");
 
   return (
     <Card className="border-2 dark:border-white/20 border-gray-300">
       <CardHeader>
-        <CardTitle>{t("order-details.sections.addresses")}</CardTitle>
+        <CardTitle>{t("order-details.addresses.deliveryTitle")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="border-b-2 dark:border-white/20 border-gray-300 pb-3">
           <span className="font-medium text-muted-foreground">
-            {t("order-details.addresses.billing")}:
+            {t("order-details.addresses.address")}:
           </span>
           <p className="text-sm text-foreground mt-1">
-            {formatInvoiceAddress(invoice.billingAddress)}
+            {formatInvoiceAddress(
+              invoice.shippingAddress || invoice.billingAddress
+            )}
           </p>
         </div>
-        <Separator className="my-4 dark:bg-white/20 bg-gray-300 h-0.5" />
-        <div className="border-b-2 dark:border-white/20 border-gray-300 pb-3">
+        <div>
           <span className="font-medium text-muted-foreground">
-            {t("order-details.addresses.shipping")}:
+            {t("order.common.method")}:
           </span>
-          <p className="text-sm text-foreground mt-1">
-            {formatInvoiceAddress(invoice.shippingAddress)}
-          </p>
+          <p className="text-sm text-foreground mt-1">{deliveryMethod}</p>
         </div>
       </CardContent>
     </Card>

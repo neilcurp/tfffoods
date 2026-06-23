@@ -111,6 +111,12 @@
       "title": "Payment Information",
       "proof": "Payment Proof",
       "reference": "Payment Reference",
+      "payNow": "Pay Now",
+      "verifiedBadge": "Payment Verified",
+      "verifiedNote": "Payment received and verified. Thank you!",
+      "onlinePendingMessage": "This order is waiting for online payment. Click below to complete checkout with your card.",
+      "choosePaymentMessage": "This order is awaiting payment. Pay now by card, or upload your payment proof for offline payment.",
+      "cancelledNotice": "Payment was cancelled. Your order is saved — you can pay again below.",
       "upload": {
         "title": "Re-Upload Payment Proof",
         "button": "Upload Proof",

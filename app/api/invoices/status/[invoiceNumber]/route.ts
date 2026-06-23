@@ -6,7 +6,7 @@ import { connectToDatabase } from "@/utils/database";
 
 export async function PUT(
   request: Request,
-  { params }: { params: { invoiceNumber: string } }
+  { params }: { params: Promise<{ invoiceNumber: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -16,7 +16,7 @@ export async function PUT(
 
     await connectToDatabase();
 
-    const { invoiceNumber } = params;
+    const { invoiceNumber } = await params;
     const { status } = await request.json();
 
     if (!["pending", "paid", "overdue"].includes(status)) {

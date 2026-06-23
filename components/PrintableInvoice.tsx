@@ -221,20 +221,27 @@ export default function PrintableInvoice({
         )}
       </div>
 
-      {/* Addresses */}
+      {/* Delivery */}
       <div style={{ marginBottom: "30px" }}>
-        <h2 style={{ fontSize: "1.2rem", marginBottom: "10px" }}>Addresses</h2>
+        <h2 style={{ fontSize: "1.2rem", marginBottom: "10px" }}>Delivery</h2>
         <div style={{ marginBottom: "15px" }}>
           <p>
-            <strong>Billing Address:</strong>
+            <strong>Address:</strong>
           </p>
-          <p>{formatInvoiceAddress(invoice.billingAddress)}</p>
+          <p>
+            {formatInvoiceAddress(
+              invoice.shippingAddress || invoice.billingAddress
+            )}
+          </p>
         </div>
         <div>
           <p>
-            <strong>Shipping Address:</strong>
+            <strong>Delivery Method:</strong>
           </p>
-          <p>{formatInvoiceAddress(invoice.shippingAddress)}</p>
+          <p>
+            {invoice.orders?.[0]?.deliveryMethodName?.en ||
+              "Not specified"}
+          </p>
         </div>
       </div>
 

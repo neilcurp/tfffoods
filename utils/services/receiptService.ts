@@ -2,12 +2,14 @@ import { format } from "date-fns";
 import Invoice from "@/utils/models/Invoice";
 import User from "@/utils/models/User";
 import Product from "@/utils/models/Product";
+import DeliverySettings from "@/utils/models/DeliverySettings";
 import {
   loadStoreBranding,
   fetchLogoImage,
   renderDocument,
   pickLang,
   createPdfDocument,
+  paymentVerifiedMessage,
   type SupportedLanguage,
   type DocKeyValue,
   type DocModel,
@@ -15,6 +17,41 @@ import {
 } from "@/utils/services/pdfDocument";
 
 export type DocumentType = "invoice" | "receipt";
+
+/** Populate paths for invoice/receipt PDF generation (orders use `items`, not cartProducts). */
+export function invoicePdfQuery(invoiceNumber: string) {
+  return Invoice.findOne({ invoiceNumber })
+    .populate({
+      path: "user",
+      model: User,
+      select: "name email phone address",
+    })
+    .populate({
+      path: "orders",
+      populate: {
+        path: "items.id",
+        model: Product,
+        select: "name displayNames images price description",
+      },
+    });
+}
+
+export function invoicePdfQueryByOrder(orderId: string) {
+  return Invoice.findOne({ orders: orderId })
+    .populate({
+      path: "user",
+      model: User,
+      select: "name email phone address",
+    })
+    .populate({
+      path: "orders",
+      populate: {
+        path: "items.id",
+        model: Product,
+        select: "name displayNames images price description",
+      },
+    });
+}
 
 interface BuildOptions {
   language: SupportedLanguage;
@@ -32,6 +69,64 @@ function titleCase(value: string): string {
   return value
     .replace(/[_-]/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/** Orders store line items under `items`; legacy paths may use `cartProducts`. */
+function mapOrderLineItems(
+  order: any,
+  language: SupportedLanguage
+): PdfLineItem[] {
+  if (!order) return [];
+
+  if (Array.isArray(order.cartProducts) && order.cartProducts.length > 0) {
+    return order.cartProducts.map((item: any) => ({
+      name:
+        pickLang(item.product?.displayNames, language) ||
+        item.product?.name ||
+        "Product not found",
+      quantity: item.quantity,
+      price: item.price || item.product?.price || 0,
+    }));
+  }
+
+  if (Array.isArray(order.items) && order.items.length > 0) {
+    return order.items.map((item: any) => ({
+      name:
+        pickLang(item.id?.displayNames, language) ||
+        pickLang(item.product?.displayNames, language) ||
+        item.id?.name ||
+        item.product?.name ||
+        "Product not found",
+      quantity: item.quantity,
+      price: item.price ?? item.id?.price ?? item.product?.price ?? 0,
+    }));
+  }
+
+  return [];
+}
+
+export function pickDeliveryMethodName(
+  deliveryMethodIndex: unknown,
+  deliverySettings: { deliveryMethods?: Array<{ name?: { en?: string; "zh-TW"?: string } }> } | null,
+  language: SupportedLanguage
+): string | undefined {
+  if (typeof deliveryMethodIndex !== "number") return undefined;
+  const method = deliverySettings?.deliveryMethods?.[deliveryMethodIndex];
+  if (!method?.name) return undefined;
+  return pickLang(method.name, language) || method.name.en;
+}
+
+function buildDeliveryRows(
+  address: string | undefined,
+  deliveryMethod: string | undefined
+): DocKeyValue[] {
+  return [
+    { label: "Address", value: address?.trim() || "Not specified" },
+    {
+      label: "Delivery Method",
+      value: deliveryMethod?.trim() || "Not specified",
+    },
+  ];
 }
 
 async function renderToBuffer(
@@ -97,25 +192,23 @@ export async function buildInvoicePdf(
     });
   }
 
-  const items: PdfLineItem[] = (firstOrder?.cartProducts || []).map(
-    (item: any) => ({
-      name:
-        pickLang(item.product?.displayNames, language) ||
-        item.product?.name ||
-        "Product not found",
-      quantity: item.quantity,
-      price: item.price || 0,
-    })
-  );
+  const items: PdfLineItem[] = mapOrderLineItems(firstOrder, language);
 
   const deliveryCost = firstOrder?.deliveryCost || 0;
-  const subtotal = firstOrder?.total ? firstOrder.total - deliveryCost : 0;
+  const subtotal =
+    firstOrder?.subtotal ??
+    (firstOrder?.total ? firstOrder.total - deliveryCost : 0);
 
-  const billingAddress =
+  const deliverySettings = await DeliverySettings.findOne().lean().exec();
+  const deliveryMethodName = pickDeliveryMethodName(
+    firstOrder?.deliveryMethod,
+    deliverySettings,
+    language
+  );
+  const shippingAddress =
+    pickLang(invoice.shippingAddress, language) ||
     pickLang(invoice.billingAddress, language) ||
     pickLang(invoice.user?.address, language);
-  const shippingAddress =
-    pickLang(invoice.shippingAddress, language) || billingAddress;
 
   const model: DocModel = {
     label: isReceipt ? "RECEIPT" : "INVOICE",
@@ -123,10 +216,12 @@ export async function buildInvoicePdf(
     detailsTitle: "Invoice Details",
     detailRows,
     paymentRows,
-    billingAddress,
-    shippingAddress,
+    deliveryRows: buildDeliveryRows(shippingAddress, deliveryMethodName),
     items,
     totals: { subtotal, deliveryCost, total: invoice.amount || 0 },
+    ...(isReceipt && paid
+      ? { paymentVerifiedMessage: paymentVerifiedMessage(language) }
+      : {}),
   };
 
   return renderToBuffer(model, language, scale);
@@ -180,18 +275,15 @@ export async function buildOrderPdf(
     });
   }
 
-  const items: PdfLineItem[] = (order.items || []).map((item: any) => ({
-    name:
-      pickLang(item.id?.displayNames, language) ||
-      item.id?.name ||
-      "Product not found",
-    quantity: item.quantity,
-    price: item.id?.price || 0,
-  }));
+  const items: PdfLineItem[] = mapOrderLineItems(order, language);
 
+  const deliverySettings = await DeliverySettings.findOne().lean().exec();
+  const deliveryMethodName = pickDeliveryMethodName(
+    order.deliveryMethod,
+    deliverySettings,
+    language
+  );
   const shippingAddress = pickLang(order.shippingAddress, language);
-  const billingAddress =
-    pickLang(order.billingAddress, language) || shippingAddress;
 
   const model: DocModel = {
     label: "ORDER",
@@ -199,8 +291,7 @@ export async function buildOrderPdf(
     detailsTitle: "Order Details",
     detailRows,
     paymentRows,
-    billingAddress,
-    shippingAddress,
+    deliveryRows: buildDeliveryRows(shippingAddress, deliveryMethodName),
     items,
     totals: {
       subtotal: order.subtotal || 0,
@@ -228,14 +319,7 @@ export async function getReceiptAttachmentByOrder(
   language: SupportedLanguage = "en"
 ): Promise<ReceiptAttachment | null> {
   try {
-    const invoice = await Invoice.findOne({ orders: orderId })
-      .populate({ path: "user", model: User, select: "name email phone address" })
-      .populate({
-        path: "orders.cartProducts.product",
-        model: Product,
-        select: "name displayNames images price description",
-      })
-      .lean();
+    const invoice = await invoicePdfQueryByOrder(orderId).lean();
 
     if (!invoice) return null;
 

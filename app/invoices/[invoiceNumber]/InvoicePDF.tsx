@@ -11,7 +11,7 @@ import {
 } from "@react-pdf/renderer";
 import React from "react";
 import { format } from "date-fns";
-import type { Invoice, Order, CartProduct } from "./invoiceTypes";
+import type { Invoice, Order } from "./invoiceTypes";
 import { PDF_FONT_URL } from "@/utils/services/pdfFontConfig";
 
 export interface InvoiceBranding {
@@ -105,21 +105,19 @@ const styles = StyleSheet.create({
     color: ACCENT,
     textTransform: "uppercase",
   },
-  paymentBadge: {
+  verifiedBanner: {
     backgroundColor: PAID_GREEN_BG,
     borderWidth: 0.5,
     borderColor: PAID_GREEN,
-    borderRadius: 8,
-    paddingVertical: 3,
+    borderRadius: 4,
+    paddingVertical: 6,
     paddingHorizontal: 8,
-    justifyContent: "center",
-    alignItems: "center",
+    marginBottom: 6,
   },
-  paymentBadgeText: {
+  verifiedBannerText: {
     color: PAID_GREEN_TEXT,
-    fontSize: 6,
-    textAlign: "center",
-    lineHeight: 1.2,
+    fontSize: 7.5,
+    lineHeight: 1.35,
   },
   kvLabel: { fontSize: 6.5, color: LABEL_GRAY, marginBottom: 1 },
   kvValue: { fontSize: 8, color: VALUE_DARK, marginBottom: 6 },
@@ -184,6 +182,40 @@ const KeyValue: React.FC<{ label: string; value?: string }> = ({
   </View>
 );
 
+function paymentVerifiedMessage(language: string): string {
+  return language === "zh-TW"
+    ? "已收到並確認付款，謝謝！"
+    : "Payment received and verified. Thank you!";
+}
+
+function getOrderLineItems(
+  order: Order,
+  language: string
+): Array<{
+  name: string;
+  quantity: number;
+  price: number;
+}> {
+  if (order.cartProducts?.length) {
+    return order.cartProducts.map((item) => ({
+      name:
+        item.product.displayNames?.[
+          language as keyof typeof item.product.displayNames
+        ] || item.product.name,
+      quantity: item.quantity,
+      price: item.product.price,
+    }));
+  }
+
+  return (order.items || []).map((item) => ({
+    name:
+      item.id.displayNames?.[language as keyof typeof item.id.displayNames] ||
+      item.id.name,
+    quantity: item.quantity,
+    price: item.id.price,
+  }));
+}
+
 const InvoicePDF: React.FC<{
   invoice: Invoice;
   language: string;
@@ -194,8 +226,16 @@ const InvoicePDF: React.FC<{
   const orderNumber = firstOrder?._id
     ? `#${firstOrder._id.slice(-12).toUpperCase()}`
     : "-";
-  const billing = invoice.billingAddress?.[language] || "Not specified";
-  const shipping = invoice.shippingAddress?.[language] || billing;
+  const shipping =
+    invoice.shippingAddress?.[language as keyof typeof invoice.shippingAddress] ||
+    invoice.billingAddress?.[language as keyof typeof invoice.billingAddress] ||
+    "Not specified";
+  const deliveryMethod =
+    firstOrder?.deliveryMethodName?.[
+      language as keyof NonNullable<Order["deliveryMethodName"]>
+    ] ||
+    firstOrder?.deliveryMethodName?.en ||
+    "Not specified";
 
   return (
     <Document>
@@ -267,17 +307,11 @@ const InvoicePDF: React.FC<{
           </View>
         </View>
 
-        {/* Addresses card */}
+        {/* Delivery card */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Addresses</Text>
-          <View style={{ flexDirection: "row", gap: 12 }}>
-            <View style={styles.addressCol}>
-              <KeyValue label="Billing Address" value={billing} />
-            </View>
-            <View style={styles.addressCol}>
-              <KeyValue label="Shipping Address" value={shipping} />
-            </View>
-          </View>
+          <Text style={styles.cardTitle}>Delivery</Text>
+          <KeyValue label="Address" value={shipping} />
+          <KeyValue label="Delivery Method" value={deliveryMethod} />
         </View>
 
         {/* Order summary card(s) */}
@@ -288,14 +322,14 @@ const InvoicePDF: React.FC<{
             (order.total ? order.total - deliveryCost : 0);
           return (
             <View key={order._id} style={[styles.card, { marginTop: 12 }]}>
-              <View style={styles.cardTitleRow}>
-                <Text style={styles.cardTitleInline}>Order Summary</Text>
-                {paid && (
-                  <View style={styles.paymentBadge}>
-                    <Text style={styles.paymentBadgeText}>Payment confirmed</Text>
-                  </View>
-                )}
-              </View>
+              <Text style={styles.cardTitleInline}>Order Summary</Text>
+              {paid && (
+                <View style={styles.verifiedBanner}>
+                  <Text style={styles.verifiedBannerText}>
+                    {paymentVerifiedMessage(language)}
+                  </Text>
+                </View>
+              )}
               <View style={styles.table}>
                 <View style={styles.tableHeader}>
                   <Text style={[styles.tableHeaderCell, styles.cellItem]}>
@@ -311,29 +345,24 @@ const InvoicePDF: React.FC<{
                     TOTAL
                   </Text>
                 </View>
-                {(order.cartProducts || []).map(
-                  (item: CartProduct, index: number) => (
-                    <View
-                      key={index}
-                      style={[
-                        styles.tableRow,
-                        index % 2 === 1 ? styles.tableRowAlt : {},
-                      ]}
-                    >
-                      <Text style={styles.cellItem}>
-                        {item.product.displayNames?.[language] ||
-                          item.product.name}
-                      </Text>
-                      <Text style={styles.cellQty}>{item.quantity}</Text>
-                      <Text style={styles.cellPrice}>
-                        ${item.product.price.toFixed(2)}
-                      </Text>
-                      <Text style={styles.cellTotal}>
-                        ${(item.quantity * item.product.price).toFixed(2)}
-                      </Text>
-                    </View>
-                  )
-                )}
+                {getOrderLineItems(order, language).map((item, index) => (
+                  <View
+                    key={index}
+                    style={[
+                      styles.tableRow,
+                      index % 2 === 1 ? styles.tableRowAlt : {},
+                    ]}
+                  >
+                    <Text style={styles.cellItem}>{item.name}</Text>
+                    <Text style={styles.cellQty}>{item.quantity}</Text>
+                    <Text style={styles.cellPrice}>
+                      ${item.price.toFixed(2)}
+                    </Text>
+                    <Text style={styles.cellTotal}>
+                      ${(item.quantity * item.price).toFixed(2)}
+                    </Text>
+                  </View>
+                ))}
               </View>
               <View style={styles.totals}>
                 <View style={styles.totalsRow}>

@@ -65,7 +65,6 @@ export default function CheckoutPage() {
   // Cart store hooks - consolidated here
   const items = useCartStore((state) => state.items);
   const removeItem = useCartStore((state) => state.removeItem);
-  const clearCart = useCartStore((state) => state.clearCart);
   const getTotalItems = useCartStore((state) => state.getTotalItems);
   const getTotalPrice = useCartStore((state) => state.getTotalPrice);
   const updateItemQuantity = useCartStore((state) => state.updateItemQuantity);

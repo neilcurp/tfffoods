@@ -114,7 +114,7 @@ export async function POST(request: Request) {
         mode: "payment",
         line_items,
         success_url: `${appBaseUrl}/checkout/success?orderId=${order._id}`,
-        cancel_url: `${appBaseUrl}/checkout?canceled=1&orderId=${order._id}`,
+        cancel_url: `${appBaseUrl}/orders/${order._id}?canceled=1`,
         metadata: {
           orderId: order._id.toString(),
           userEmail: order.email,

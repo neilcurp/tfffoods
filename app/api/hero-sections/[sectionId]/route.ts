@@ -5,9 +5,9 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/auth.config";
 import HeroSection from "@/models/HeroSection";
 
 interface Params {
-  params: {
+  params: Promise<{
     sectionId: string;
-  };
+  }>;
 }
 
 export async function PATCH(request: Request, { params }: Params) {

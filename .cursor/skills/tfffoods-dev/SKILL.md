@@ -52,7 +52,7 @@ A bilingual (en / zh-TW) e-commerce app: **Next.js 16 App Router · React 19 · 
 
 ## Top improvement areas (ranked)
 
-1. **Security**: server protection is in `proxy.ts` (gates `/admin` pages + admin APIs). `orderAdmin` and debug routes were hardened 2026-06-07; remaining CMS POSTs (hero/features/guarantee) still need admin gating.
+1. **Security**: server protection is in `proxy.ts` (gates `/admin` pages + admin APIs). `orderAdmin` and debug routes were hardened 2026-06-07. CMS write routes (hero/features/guarantee) were verified 2026-06-23 to already have inline `session?.user?.admin` checks.
 2. **Dead auth flags**: `requireAuth`/`requireAdmin` in `utils/routeHandler.ts` are accepted but never enforced.
 3. **Duplication**: two auth configs, two Cloudinary configs, two StoreSettings models, models in 3 folders, duplicate product/featured routes.
 4. **Mega-files**: `app/admin/settings/page.tsx` (~3179 lines), `app/invoices/[invoiceNumber]/page.tsx` (~1042), `app/api/checkout/route.ts` (~493).

@@ -100,9 +100,37 @@ const defaultTranslations: Record<string, TranslationsType> = {
   checkout: {
     canceled: {
       title: "Payment Canceled",
-      message: "Your payment has been canceled",
+      message: "Your payment has been canceled.",
+      payAgain: "Your order is saved — you can complete payment below or from your order details.",
+      viewOrder: "View order",
       returnToCart: "Return to Cart",
       continueShopping: "Continue Shopping",
+    },
+  },
+  order: {
+    details: {
+      payment: {
+        verifiedBadge: "Payment Verified",
+        verifiedNote: "Payment received and verified. Thank you!",
+        choosePaymentMessage:
+          "This order is awaiting payment. Pay now by card, or upload your payment proof for offline payment.",
+        payNow: "Pay Now",
+        cancelledNotice:
+          "Payment was cancelled. Your order is saved — you can pay again below.",
+        upload: {
+          button: "Upload Proof",
+          reupload: "Re-Upload Payment Proof",
+          uploading: "Uploading...",
+        },
+      },
+    },
+    status: {
+      pending: "Pending",
+      pending_payment_verification: "Pending Verification",
+      processing: "Processing",
+      shipped: "Shipped",
+      delivered: "Delivered",
+      cancelled: "Cancelled",
     },
   },
 };
@@ -319,6 +347,17 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({
 
       if (typeof value === "string") {
         return value;
+      }
+
+      // Key missing from loaded JSON (e.g. stale browser cache) — try baked-in defaults
+      const defaultModule = defaultTranslations[moduleName];
+      if (defaultModule) {
+        const defaultValue = keyPath
+          .split(".")
+          .reduce((obj: any, k: string) => obj?.[k], defaultModule);
+        if (typeof defaultValue === "string") {
+          return defaultValue;
+        }
       }
 
       // Remove debug log

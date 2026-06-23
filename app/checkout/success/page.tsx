@@ -9,6 +9,23 @@ import useCartStore from "@/store/cartStore";
 import { useTranslation } from "@/providers/language/LanguageContext";
 import Image from "next/image";
 
+function shouldClearCartForOrder(order: {
+  paymentMethod?: string;
+  status?: string;
+  paid?: boolean;
+}) {
+  if (order.paymentMethod === "online") {
+    return order.status === "processing" || order.paid === true;
+  }
+  if (
+    order.paymentMethod === "offline" ||
+    order.paymentMethod === "periodInvoice"
+  ) {
+    return order.status === "processing";
+  }
+  return false;
+}
+
 function SuccessContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -35,20 +52,16 @@ function SuccessContent() {
         setOrder(response.data);
         console.log("Order data received:", response.data);
 
-        // Clear cart only for online payments or approved orders
-        if (
-          response.data.paymentMethod === "online" ||
-          (response.data.paymentMethod === "offline" &&
-            response.data.status === "processing") ||
-          (response.data.paymentMethod === "periodInvoice" &&
-            response.data.status === "processing")
-        ) {
+        if (shouldClearCartForOrder(response.data)) {
           console.log("Clearing cart for confirmed payment");
           await clearCart();
         }
 
-        // Only set redirect timer for online payments
-        if (response.data.paymentMethod === "online") {
+        // Only set redirect timer for online payments once confirmed
+        if (
+          response.data.paymentMethod === "online" &&
+          shouldClearCartForOrder(response.data)
+        ) {
           setTimeout(() => {
             router.push("/profile");
           }, 5000);
@@ -64,7 +77,7 @@ function SuccessContent() {
     fetchOrder(orderId);
   }, [router, searchParams, t, clearCart]);
 
-  // Set up polling for period orders to check status
+  // Poll until payment is confirmed (Stripe webhook may lag behind success redirect)
   useEffect(() => {
     let pollInterval: NodeJS.Timeout | null = null;
 
@@ -77,35 +90,38 @@ function SuccessContent() {
         const updatedOrder = response.data;
         setOrder(updatedOrder);
 
-        // Clear cart only when order is approved
-        if (
-          (updatedOrder.paymentMethod === "offline" &&
-            updatedOrder.status === "processing") ||
-          (updatedOrder.paymentMethod === "periodInvoice" &&
-            updatedOrder.status === "processing")
-        ) {
-          console.log("Order approved, clearing cart");
+        if (shouldClearCartForOrder(updatedOrder)) {
+          console.log("Order confirmed, clearing cart");
           await clearCart();
           if (pollInterval) clearInterval(pollInterval);
+
+          if (updatedOrder.paymentMethod === "online") {
+            setTimeout(() => {
+              router.push("/profile");
+            }, 5000);
+          }
         }
       } catch (error) {
         console.error("Error polling order status:", error);
       }
     };
 
-    // Only poll for offline and period orders that are pending
-    if (
-      order?.status === "pending" &&
-      (order?.paymentMethod === "offline" ||
-        order?.paymentMethod === "periodInvoice")
-    ) {
-      pollInterval = setInterval(pollOrderStatus, 10000); // Poll every 10 seconds
+    const needsPolling =
+      order &&
+      !shouldClearCartForOrder(order) &&
+      (order.paymentMethod === "online" ||
+        ((order.paymentMethod === "offline" ||
+          order.paymentMethod === "periodInvoice") &&
+          order.status === "pending"));
+
+    if (needsPolling) {
+      pollInterval = setInterval(pollOrderStatus, 3000);
     }
 
     return () => {
       if (pollInterval) clearInterval(pollInterval);
     };
-  }, [order?.paymentMethod, order?.status, searchParams, clearCart]);
+  }, [order, searchParams, clearCart, router]);
 
   // Rest of the component remains the same...
   if (isLoading) {

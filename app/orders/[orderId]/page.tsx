@@ -1,22 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "@/providers/language/LanguageContext";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { fetchOrder } from "./api";
 import { formatDate, formatPrice } from "./utils";
 import { Button } from "@/components/ui/button";
 import { CldUploadButton } from "next-cloudinary";
+import { useCloudinary } from "@/components/providers/CloudinaryProvider";
 import { toast } from "react-hot-toast";
 import axios from "axios";
 import {
   ArrowLeft,
-  ShoppingBag,
+  CreditCard,
   Upload,
   Download,
   Printer,
+  CheckCircle2,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -28,10 +30,31 @@ const OrderDetails = () => {
   const { t, language } = useTranslation();
   const params = useParams<OrderDetailsParams>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [order, setOrder] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { data: session } = useSession();
+  const { uploadPreset } = useCloudinary();
+  const cancelledNoticeShown = useRef(false);
+
+  // Show a single notice if the user returned from a cancelled Stripe checkout.
+  // Guarded by a ref + stable toast id so React Strict Mode's double-mount in
+  // dev can't surface it twice.
+  useEffect(() => {
+    if (
+      searchParams?.get("canceled") === "1" &&
+      !cancelledNoticeShown.current
+    ) {
+      cancelledNoticeShown.current = true;
+      toast(t("order.details.payment.cancelledNotice"), {
+        icon: "⚠️",
+        id: "order-payment-cancelled",
+      });
+      router.replace(`/orders/${params?.orderId}`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const loadOrder = async () => {
@@ -100,6 +123,14 @@ const OrderDetails = () => {
     );
     url.searchParams.set("lang", language);
     window.open(url.toString(), "_blank");
+  };
+
+  const handlePayOnline = () => {
+    if (!params?.orderId) {
+      toast.error(t("order.errors.update"));
+      return;
+    }
+    window.location.href = `/api/stripe/checkout-redirect?orderId=${params.orderId}`;
   };
 
   const handleDownloadReceipt = (invoiceNumber: string) => {
@@ -202,6 +233,14 @@ const OrderDetails = () => {
               </div>
             </div>
             <div className="flex items-center space-x-2">
+              {["processing", "shipped", "delivered"].includes(
+                order.status
+              ) && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                  <CheckCircle2 className="w-3 h-3" />
+                  {t("order.details.payment.verifiedBadge")}
+                </span>
+              )}
               <span
                 className={`px-2 py-0.5 rounded-full text-xs font-medium
                 ${
@@ -391,6 +430,15 @@ const OrderDetails = () => {
             {t("order.common.information")}
           </h2>
 
+          {/* Verified confirmation — shown once payment is accepted
+              (online via Stripe webhook, or offline confirmed by admin). */}
+          {["processing", "shipped", "delivered"].includes(order.status) && (
+            <div className="mb-4 flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-3 text-xs text-green-800 dark:border-green-900 dark:bg-green-900/20 dark:text-green-200">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              <span>{t("order.details.payment.verifiedNote")}</span>
+            </div>
+          )}
+
           {/* Payment Reference */}
           <div className="mb-4">
             <h3 className="text-xs font-medium text-gray-800 dark:text-gray-200 mb-2">
@@ -423,13 +471,37 @@ const OrderDetails = () => {
             )}
           </div>
 
-          {/* Upload Button */}
-          {order.status === "pending" && (
+          {/* While the order still awaits payment, offer BOTH methods:
+              pay online by card, OR upload offline payment proof. */}
+          {(order.status === "pending" ||
+            order.status === "pending_payment_verification") && (
             <div className="space-y-3">
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                {t("order.details.payment.choosePaymentMessage")}
+              </p>
+
+              {/* Online — retry/start Stripe checkout */}
+              <Button
+                className="w-full flex items-center justify-center gap-2 text-xs"
+                onClick={handlePayOnline}
+              >
+                <CreditCard className="w-4 h-4" />
+                {t("order.details.payment.payNow")}
+              </Button>
+
+              {/* Offline — upload (or re-upload) payment proof */}
               <CldUploadButton
                 onSuccess={handlePaymentProofUpload}
-                uploadPreset="payment-proofs"
-                className={`w-full bg-primary hover:bg-primary/90 text-white py-2 px-3 rounded-lg flex items-center justify-center gap-2 text-xs ${
+                uploadPreset={uploadPreset}
+                options={{
+                  folder: "payment-proofs",
+                  maxFiles: 1,
+                  sources: ["local", "url", "camera"],
+                  clientAllowedFormats: ["jpg", "jpeg", "png", "webp", "pdf"],
+                  maxFileSize: 10 * 1024 * 1024,
+                  multiple: false,
+                }}
+                className={`w-full bg-secondary hover:bg-secondary/80 text-secondary-foreground py-2 px-3 rounded-lg flex items-center justify-center gap-2 text-xs border ${
                   isSubmitting ? "opacity-50 cursor-not-allowed" : ""
                 }`}
                 onClick={(e: React.MouseEvent<HTMLElement>) => {
@@ -440,13 +512,15 @@ const OrderDetails = () => {
               >
                 {isSubmitting ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                    {t("order.details.payment.uploading")}
+                    <div className="w-4 h-4 border-2 border-current/20 border-t-current rounded-full animate-spin" />
+                    {t("order.details.payment.upload.uploading")}
                   </>
                 ) : (
                   <>
                     <Upload className="w-4 h-4" />
-                    {t("order.details.payment.uploadProof")}
+                    {order.paymentProof
+                      ? t("order.details.payment.upload.reupload")
+                      : t("order.details.payment.upload.button")}
                   </>
                 )}
               </CldUploadButton>

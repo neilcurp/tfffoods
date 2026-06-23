@@ -41,6 +41,10 @@ export interface Order {
   deliveryCost: number;
   subtotal: number;
   deliveryMethod: number;
+  deliveryMethodName?: {
+    en: string;
+    "zh-TW": string;
+  };
 }
 
 export interface Invoice {

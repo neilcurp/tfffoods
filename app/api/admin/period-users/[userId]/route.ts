@@ -8,7 +8,7 @@ import { addMonths, startOfDay, endOfDay } from "date-fns";
 
 export async function PUT(
   request: Request,
-  context: { params: { userId: string } }
+  context: { params: Promise<{ userId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);

@@ -3,7 +3,9 @@
   "version": "0.1.1",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --webpack",
+    "dev:turbo": "next dev",
+    "stop-dev": "node scripts/stop-dev.js",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

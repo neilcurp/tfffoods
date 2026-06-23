@@ -5,6 +5,7 @@ import Invoice from "@/utils/models/Invoice";
 import User from "@/utils/models/User";
 import { Order } from "@/utils/models/Order";
 import Product from "@/utils/models/Product";
+import DeliverySettings from "@/utils/models/DeliverySettings";
 import { connectToDatabase } from "@/utils/database";
 
 interface CartProduct {
@@ -25,6 +26,7 @@ interface OrderType {
   total: number;
   subtotal?: number;
   deliveryCost?: number;
+  deliveryMethod?: number;
   status: string;
   createdAt: Date;
   cartProducts: CartProduct[];
@@ -115,6 +117,8 @@ export async function GET(
     }
 
     try {
+      const deliverySettings = await DeliverySettings.findOne().lean().exec();
+
       // Convert MongoDB dates to ISO strings for proper JSON serialization
       const serializedInvoice = {
         ...invoice.toObject(),
@@ -144,6 +148,11 @@ export async function GET(
                   _id: order._id.toString(),
                   createdAt:
                     order.createdAt?.toISOString() || new Date().toISOString(),
+                  deliveryMethodName:
+                    typeof order.deliveryMethod === "number" &&
+                    deliverySettings?.deliveryMethods?.[order.deliveryMethod]
+                      ? deliverySettings.deliveryMethods[order.deliveryMethod].name
+                      : undefined,
                   // Use calculated values if stored values are missing
                   subtotal: order.subtotal || calculatedSubtotal,
                   deliveryCost: order.deliveryCost || calculatedDeliveryCost,

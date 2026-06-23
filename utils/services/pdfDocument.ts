@@ -194,7 +194,45 @@ const PAID_GREEN: [number, number, number] = [34, 139, 87];
 const PAID_GREEN_TEXT: [number, number, number] = [22, 120, 72];
 const PAID_GREEN_BG: [number, number, number] = [232, 245, 236];
 
-/** Soft pill badge — right-aligned on the Order Summary title row. */
+export function paymentVerifiedMessage(language: SupportedLanguage): string {
+  return language === "zh-TW"
+    ? "已收到並確認付款，謝謝！"
+    : "Payment received and verified. Thank you!";
+}
+
+/** Full-width thank-you banner inside the Order Summary card (receipts). */
+function drawPaymentVerifiedBanner(
+  doc: jsPDF,
+  left: number,
+  right: number,
+  startY: number,
+  message: string,
+  scale = 1
+): number {
+  const innerW = right - left;
+  const padX = gap(3.5, scale);
+  const padY = gap(3, scale);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(fontPt(7.5, scale));
+  const lines = doc.splitTextToSize(message, innerW - padX * 2) as string[];
+  const lineH = gap(3.5, scale);
+  const bannerH = padY * 2 + lines.length * lineH;
+
+  doc.setFillColor(...PAID_GREEN_BG);
+  doc.setDrawColor(...PAID_GREEN);
+  doc.setLineWidth(0.25);
+  doc.roundedRect(left, startY, innerW, bannerH, 2, 2, "FD");
+
+  doc.setTextColor(...PAID_GREEN_TEXT);
+  lines.forEach((line, i) => {
+    doc.text(line, left + padX, startY + padY + (i + 1) * lineH - lineH * 0.25);
+  });
+  doc.setTextColor(0, 0, 0);
+  ensurePdfFont(doc);
+  return startY + bannerH + gap(3, scale);
+}
+
+/** @deprecated Use paymentVerifiedMessage banner on receipts instead. */
 function drawPaymentConfirmedBadge(
   doc: jsPDF,
   rightX: number,
@@ -299,10 +337,12 @@ export interface DocModel {
   detailsTitle: string;
   detailRows: DocKeyValue[];
   paymentRows: DocKeyValue[];
-  billingAddress: string;
-  shippingAddress: string;
+  /** Delivery destination + method (replaces separate billing/shipping columns). */
+  deliveryRows: DocKeyValue[];
   items: PdfLineItem[];
   totals: { subtotal: number; deliveryCost: number; total: number };
+  /** Shown on receipts once payment is verified (replaces the old pill badge). */
+  paymentVerifiedMessage?: string;
 }
 
 function drawCardBox(
@@ -525,33 +565,42 @@ export function renderDocument(
   drawRows(doc, rightX + CARD_PAD_X, rowsTop, model.paymentRows, scale, innerW);
   yPos += cardH + 4;
 
-  // Addresses card (two columns)
-  const addrColW = (CONTENT_WIDTH - 2 * CARD_PAD_X - COL_GAP) / 2;
-  const billRows: DocKeyValue[] = [
-    { label: "Billing Address", value: model.billingAddress || "Not specified" },
-  ];
-  const shipRows: DocKeyValue[] = [
-    { label: "Shipping Address", value: model.shippingAddress || "Not specified" },
-  ];
-  const addrBodyH = Math.max(
-    measureRows(doc, billRows, scale, addrColW),
-    measureRows(doc, shipRows, scale, addrColW)
+  // Delivery card (address + method)
+  const deliveryInnerW = CONTENT_WIDTH - 2 * CARD_PAD_X;
+  const deliveryBodyH = measureRows(doc, model.deliveryRows, scale, deliveryInnerW);
+  const deliveryCardH =
+    CARD_PAD_TOP + CARD_TITLE_GAP + deliveryBodyH + CARD_PAD_BOTTOM;
+  drawCardBox(doc, MARGIN, yPos, CONTENT_WIDTH, deliveryCardH);
+  drawCardTitle(doc, MARGIN + CARD_PAD_X, yPos + CARD_PAD_TOP, "Delivery", scale);
+  const deliveryTop = yPos + CARD_PAD_TOP + CARD_TITLE_GAP;
+  drawRows(
+    doc,
+    MARGIN + CARD_PAD_X,
+    deliveryTop,
+    model.deliveryRows,
+    scale,
+    deliveryInnerW
   );
-  const addrCardH = CARD_PAD_TOP + CARD_TITLE_GAP + addrBodyH + CARD_PAD_BOTTOM;
-  drawCardBox(doc, MARGIN, yPos, CONTENT_WIDTH, addrCardH);
-  drawCardTitle(doc, MARGIN + CARD_PAD_X, yPos + CARD_PAD_TOP, "Addresses", scale);
-  const addrTop = yPos + CARD_PAD_TOP + CARD_TITLE_GAP;
-  drawRows(doc, MARGIN + CARD_PAD_X, addrTop, billRows, scale, addrColW);
-  drawRows(doc, MARGIN + CARD_PAD_X + addrColW + COL_GAP, addrTop, shipRows, scale, addrColW);
-  yPos += addrCardH + 4;
+  yPos += deliveryCardH + 4;
 
   // Order summary card (items table + totals)
   const tableLeft = MARGIN + CARD_PAD_X;
   const tableRight = CONTENT_RIGHT - CARD_PAD_X;
   const isReceipt = model.label === "RECEIPT";
+  const verifiedMessage = model.paymentVerifiedMessage?.trim();
+  let verifiedBannerH = 0;
+  if (isReceipt && verifiedMessage) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(fontPt(7.5, scale));
+    const lines = doc.splitTextToSize(
+      verifiedMessage,
+      tableRight - tableLeft - gap(7, scale)
+    ) as string[];
+    verifiedBannerH = gap(6, scale) + gap(6, scale) + lines.length * gap(3.5, scale) + gap(3, scale);
+  }
   const tableH = measureItemsTable(doc, model.items, tableLeft, tableRight, scale);
   const totalsH = gap(22, scale);
-  const sumBodyH = tableH + gap(3.5, scale) + totalsH;
+  const sumBodyH = verifiedBannerH + tableH + gap(3.5, scale) + totalsH;
   const sumCardH = CARD_PAD_TOP + CARD_TITLE_GAP + sumBodyH + CARD_PAD_BOTTOM;
   if (yPos + sumCardH > 282) {
     doc.addPage();
@@ -561,8 +610,17 @@ export function renderDocument(
   drawCardBox(doc, MARGIN, yPos, CONTENT_WIDTH, sumCardH);
   const sumTitleY = yPos + CARD_PAD_TOP;
   drawCardTitle(doc, MARGIN + CARD_PAD_X, sumTitleY, "Order Summary", scale);
-  if (isReceipt) drawPaymentConfirmedBadge(doc, tableRight, sumTitleY, scale);
   let innerY = yPos + CARD_PAD_TOP + CARD_TITLE_GAP;
+  if (isReceipt && verifiedMessage) {
+    innerY = drawPaymentVerifiedBanner(
+      doc,
+      tableLeft,
+      tableRight,
+      innerY,
+      verifiedMessage,
+      scale
+    );
+  }
   innerY = drawModernItemsTable(doc, model.items, tableLeft, tableRight, innerY, scale);
   innerY += gap(3.5, scale);
   drawModernTotals(doc, model.totals, tableRight, innerY, scale);

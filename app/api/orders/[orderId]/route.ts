@@ -137,9 +137,9 @@ async function broadcastOrderUpdate(orderId: string, status: string) {
 
 export async function PUT(
   request: Request,
-  { params }: { params: { orderId: string } }
+  context: { params: Promise<{ orderId: string }> }
 ) {
-  const { orderId } = params;
+  const { orderId } = await context.params;
 
   await connectToDatabase();
 
@@ -202,12 +202,12 @@ export async function PUT(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { orderId: string } }
+  context: { params: Promise<{ orderId: string }> }
 ) {
   await connectToDatabase();
 
   try {
-    const { orderId } = params;
+    const { orderId } = await context.params;
     console.log(`Attempting to delete order ${orderId}...`);
 
     const order = await Order.findById(orderId);

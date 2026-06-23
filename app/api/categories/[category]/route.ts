@@ -4,11 +4,11 @@ import Category from "@/utils/models/Category";
 
 export async function GET(
   request: Request,
-  { params }: { params: { category: string } }
+  { params }: { params: Promise<{ category: string }> }
 ) {
   try {
     await connectToDatabase();
-    const { category } = params;
+    const { category } = await params;
     const { searchParams } = new URL(request.url);
     const language = searchParams.get("language") || "en";
 

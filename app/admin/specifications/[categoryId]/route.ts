@@ -6,9 +6,9 @@ import connect from "@/utils/config/dbConnection";
 import { Types } from "mongoose";
 
 interface Params {
-  params: {
+  params: Promise<{
     categoryId: string;
-  };
+  }>;
 }
 
 interface Specification {
@@ -29,15 +29,17 @@ export async function GET(request: Request, { params }: Params) {
 
     await connect();
 
+    const { categoryId } = await params;
+
     // Validate ObjectId
-    if (!Types.ObjectId.isValid(params.categoryId)) {
+    if (!Types.ObjectId.isValid(categoryId)) {
       return NextResponse.json(
         { error: "Invalid category ID format" },
         { status: 400 }
       );
     }
 
-    const category = await Category.findById(params.categoryId);
+    const category = await Category.findById(categoryId);
     if (!category) {
       return NextResponse.json(
         { error: "Category not found" },
@@ -64,8 +66,10 @@ export async function POST(request: Request, { params }: Params) {
 
     await connect();
 
+    const { categoryId } = await params;
+
     // Validate ObjectId
-    if (!Types.ObjectId.isValid(params.categoryId)) {
+    if (!Types.ObjectId.isValid(categoryId)) {
       return NextResponse.json(
         { error: "Invalid category ID format" },
         { status: 400 }
@@ -95,7 +99,7 @@ export async function POST(request: Request, { params }: Params) {
 
     // Update category with new specifications
     const category = await Category.findByIdAndUpdate(
-      params.categoryId,
+      categoryId,
       { $set: { specifications: validatedSpecs } },
       { new: true }
     );

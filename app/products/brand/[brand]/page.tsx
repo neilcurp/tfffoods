@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import axios from "axios";
 import type { Product } from "@/types";
 import ProductView from "@/components/products/ProductView";
@@ -9,7 +9,12 @@ import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { useCart } from "@/providers/cart/CartContext";
 
-export default function BrandPage({ params }: { params: { brand: string } }) {
+export default function BrandPage({
+  params,
+}: {
+  params: Promise<{ brand: string }>;
+}) {
+  const { brand } = use(params);
   const [products, setProducts] = useState<Product[]>([]);
   const [wishlist, setWishlist] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -23,7 +28,7 @@ export default function BrandPage({ params }: { params: { brand: string } }) {
     const loadProducts = async () => {
       setIsLoading(true);
       try {
-        const response = await axios.get(`/api/products?brand=${params.brand}`);
+        const response = await axios.get(`/api/products?brand=${brand}`);
         setProducts(response.data.products || []);
         setTotalPages(Math.ceil((response.data.total || 0) / 12));
       } catch (error) {
@@ -35,7 +40,7 @@ export default function BrandPage({ params }: { params: { brand: string } }) {
     };
 
     loadProducts();
-  }, [params.brand]);
+  }, [brand]);
 
   useEffect(() => {
     const handleAddToCart = (e: Event) => {
@@ -91,7 +96,7 @@ export default function BrandPage({ params }: { params: { brand: string } }) {
   return (
     <main className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-8">{params.brand} Collection</h1>
+        <h1 className="text-3xl font-bold mb-8">{brand} Collection</h1>
         <ProductView
           products={products}
           isLoading={isLoading}

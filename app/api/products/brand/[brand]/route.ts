@@ -4,11 +4,11 @@ import { NextResponse } from "next/server";
 
 export async function GET(
   req: Request,
-  { params }: { params: { brand: string } }
+  { params }: { params: Promise<{ brand: string }> }
 ) {
   await connect();
 
-  const { brand } = params;
+  const { brand } = await params;
 
   function createFlexibleSearchPattern(input: string) {
     const stripped = input.replace(/\s+/g, "").toLowerCase();

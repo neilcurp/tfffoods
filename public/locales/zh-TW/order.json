@@ -111,6 +111,12 @@
       "title": "付款資訊",
       "proof": "付款證明",
       "reference": "付款參考號",
+      "payNow": "立即付款",
+      "verifiedBadge": "付款已驗證",
+      "verifiedNote": "已收到並確認付款，謝謝！",
+      "onlinePendingMessage": "此訂單尚未完成線上付款。請點擊下方按鈕以信用卡完成結帳。",
+      "choosePaymentMessage": "此訂單尚未付款。您可以立即以信用卡付款，或上傳付款證明以使用線下付款。",
+      "cancelledNotice": "付款已取消。您的訂單已保留——您可以在下方重新付款。",
       "upload": {
         "title": "重新上傳付款證明",
         "button": "上傳證明",

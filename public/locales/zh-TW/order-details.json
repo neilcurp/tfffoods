@@ -53,7 +53,10 @@
   "addresses": {
     "title": "地址",
     "billing": "帳單地址",
-    "shipping": "送貨地址"
+    "shipping": "送貨地址",
+    "deliveryTitle": "送貨",
+    "address": "地址",
+    "notSpecified": "未指定"
   },
   "status": {
     "paid": "已付款",

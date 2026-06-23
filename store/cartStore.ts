@@ -208,7 +208,15 @@ const useCartStore = create<CartStore>()(
             "/api/userData"
           );
           const serverCart = data?.user?.cart;
-          if (Array.isArray(serverCart)) {
+          const localItems = get().items;
+
+          if (!Array.isArray(serverCart)) return;
+
+          // Only hydrate from the server when the local cart is empty but the
+          // account cart has items (e.g. after logout/login on another device).
+          // NEVER replace a non-empty local cart with an empty server cart — that
+          // was wiping items when the user opened checkout before the 1s sync ran.
+          if (serverCart.length > 0 && localItems.length === 0) {
             set((state) => ({ ...state, items: serverCart as CartItem[] }));
           }
         } catch (error) {

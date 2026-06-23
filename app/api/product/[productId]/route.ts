@@ -8,7 +8,7 @@ import { productCache } from "@/utils/cache";
 
 export async function GET(
   request: Request,
-  { params }: { params: { productId: string } }
+  { params }: { params: Promise<{ productId: string }> }
 ) {
   try {
     await connectToDatabase();
@@ -188,7 +188,7 @@ export async function GET(
 // Clear cache when product is updated
 export async function PUT(
   req: Request,
-  { params }: { params: { productId: string } }
+  { params }: { params: Promise<{ productId: string }> }
 ) {
   try {
     await connectToDatabase();
@@ -251,7 +251,7 @@ export async function PUT(
 // Clear cache when product is deleted
 export async function DELETE(
   req: Request,
-  { params }: { params: { productId: string } }
+  { params }: { params: Promise<{ productId: string }> }
 ) {
   try {
     await connectToDatabase();

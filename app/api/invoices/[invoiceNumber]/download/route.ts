@@ -2,12 +2,10 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/auth.config";
 import { connectToDatabase, waitForConnection } from "@/utils/database";
-import Invoice from "@/utils/models/Invoice";
-import User from "@/utils/models/User";
-import Product from "@/utils/models/Product";
 import { resolveLanguage, resolveScale } from "@/utils/services/pdfDocument";
 import {
   buildInvoicePdf,
+  invoicePdfQuery,
   type DocumentType,
 } from "@/utils/services/receiptService";
 
@@ -39,18 +37,7 @@ export async function GET(
       );
     }
 
-    const invoice = await Invoice.findOne({ invoiceNumber })
-      .populate({
-        path: "user",
-        model: User,
-        select: "name email phone address",
-      })
-      .populate({
-        path: "orders.cartProducts.product",
-        model: Product,
-        select: "name displayNames images price description",
-      })
-      .lean();
+    const invoice = await invoicePdfQuery(invoiceNumber).lean();
 
     if (!invoice) {
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });

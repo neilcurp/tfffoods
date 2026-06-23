@@ -53,7 +53,10 @@
   "addresses": {
     "title": "Addresses",
     "billing": "Billing Address",
-    "shipping": "Shipping Address"
+    "shipping": "Shipping Address",
+    "deliveryTitle": "Delivery",
+    "address": "Address",
+    "notSpecified": "Not specified"
   },
   "status": {
     "paid": "Paid",

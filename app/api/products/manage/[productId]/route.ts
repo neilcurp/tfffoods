@@ -340,7 +340,7 @@ export async function PUT(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { productId: string } }
+  { params }: { params: Promise<{ productId: string }> }
 ) {
   try {
     const resolvedParams = await params;
