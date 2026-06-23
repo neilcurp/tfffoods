@@ -94,7 +94,7 @@ NewsletterSchema.methods.resubscribe = function () {
 };
 
 NewsletterSchema.static("findByEmail", function (email: string) {
-  return this.findOne({ email: email.toLowerCase() }).lean();
+  return this.findOne({ email: email.toLowerCase() });
 });
 
 NewsletterSchema.pre("save", function (next) {
