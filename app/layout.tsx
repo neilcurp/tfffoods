@@ -98,8 +98,8 @@ const inter = localFont({
 });
 
 export const metadata = {
-  title: "tummy foods",
-  description: "Food creativity and healthly care for mother and child",
+  title: "cpffonline",
+  description: "CHINESE POWER FRESH FRUITS LIMITED",
 };
 
 export default function RootLayout({
