@@ -3,20 +3,16 @@
 import React from "react";
 import {
   Clock,
-  Watch,
   Star,
   TrendingUp,
   Users,
-  Diamond,
   Shield,
-  Gem,
   Award,
   CheckCircle,
   BadgeCheck,
   Info,
 } from "lucide-react";
 import Image from "next/image";
-import LoadingErrorComponent from "@/components/ui/LoadingErrorComponent";
 import { useAboutPage } from "@/providers/about/AboutPageContext";
 import { useTranslation } from "@/providers/language/LanguageContext";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
@@ -64,13 +60,10 @@ const AboutPage = () => {
 
   const icons = {
     Clock,
-    Watch,
     Star,
     TrendingUp,
     Users,
-    Diamond,
     Shield,
-    Gem,
     Award,
     CheckCircle,
     BadgeCheck,
@@ -170,7 +163,7 @@ const AboutPage = () => {
                 <Image
                   width={500}
                   height={500}
-                  src={member.image || "/about1.jpg"}
+                  src={member.image || "/images/support-default.svg"}
                   alt={member.name[language]}
                   className="w-32 h-32 rounded-full mx-auto mb-4 object-cover"
                 />

@@ -14,7 +14,6 @@ const PUBLIC_ROUTES = [
   "/blog",
   "/products",
   "/product",
-  "/warranty",
   "/privacy-policy",
 ];
 

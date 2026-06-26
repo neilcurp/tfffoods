@@ -12,8 +12,7 @@ import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 const fetcher = (url: string) => axios.get(url).then((res) => res.data);
 
 export default function BrandProductsPage() {
-  const params = useParams();
-  const { slug } = params;
+  const { slug } = useParams() as { slug: string };
   const { t, language } = useTranslation();
   const [currentPage, setCurrentPage] = useState(1);
   const limit = 12;
